@@ -7,7 +7,16 @@ import {
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import {
   auth,
   db,
@@ -28,7 +37,10 @@ export interface CloudAuthController {
   profile: CloudProfile | null;
   error: string;
   magicLinkSentTo: string;
-  signInWithMagicLink: (email: string, displayName: string) => Promise<void>;
+  signInWithMagicLink: (
+    email: string,
+    displayName: string,
+  ) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -37,26 +49,82 @@ function cleanDisplayName(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
 
-async function loadOrCreateProfile(user: User): Promise<CloudProfile> {
+async function findLatestInvite(
+  email: string,
+): Promise<{
+  id: string;
+  displayName: string;
+  status: string;
+} | null> {
+  if (!email) {
+    return null;
+  }
+
+  const firestore = requireFirestore();
+  const snapshots = await getDocs(
+    query(
+      collection(firestore, "invites"),
+      where("email", "==", email),
+    ),
+  );
+
+  const matches = snapshots.docs
+    .map((snapshot) => ({
+      id: snapshot.id,
+      displayName:
+        typeof snapshot.data().displayName === "string"
+          ? snapshot.data().displayName
+          : "",
+      status:
+        typeof snapshot.data().status === "string"
+          ? snapshot.data().status
+          : "pending",
+      sentAt:
+        typeof snapshot.data().sentAt === "string"
+          ? snapshot.data().sentAt
+          : "",
+    }))
+    .sort((a, b) => b.sentAt.localeCompare(a.sentAt));
+
+  return matches[0] ?? null;
+}
+
+async function loadOrCreateProfile(
+  user: User,
+): Promise<CloudProfile> {
   const firestore = requireFirestore();
   const userRef = doc(firestore, "users", user.uid);
   const adminRef = doc(firestore, "admins", user.uid);
+  const email = user.email?.trim().toLowerCase() ?? "";
 
-  const [userSnapshot, adminSnapshot] = await Promise.all([
+  const [userSnapshot, invite] = await Promise.all([
     getDoc(userRef),
-    getDoc(adminRef),
+    findLatestInvite(email),
   ]);
 
   const now = new Date().toISOString();
   const savedName = cleanDisplayName(
     window.localStorage.getItem(NAME_STORAGE_KEY) ?? "",
   );
+  const invitedName = cleanDisplayName(
+    invite?.displayName ?? "",
+  );
   const fallbackName =
     user.displayName?.trim() ||
     user.email?.split("@")[0]?.replace(/[._-]+/g, " ") ||
     "Player";
-  const displayName = savedName.length >= 2 ? savedName : fallbackName;
-  const email = user.email?.trim().toLowerCase() ?? "";
+  const newProfileName =
+    savedName.length >= 2
+      ? savedName
+      : invitedName.length >= 2
+        ? invitedName
+        : fallbackName;
+  const existingName =
+    userSnapshot.exists() &&
+    typeof userSnapshot.data().displayName === "string"
+      ? userSnapshot.data().displayName
+      : "";
+  const displayName = existingName || newProfileName;
 
   if (!userSnapshot.exists()) {
     await setDoc(userRef, {
@@ -86,53 +154,76 @@ async function loadOrCreateProfile(user: User): Promise<CloudProfile> {
     );
   }
 
-  const refreshedUser = await getDoc(userRef);
+  if (invite && invite.status !== "signed_in") {
+    await updateDoc(doc(firestore, "invites", invite.id), {
+      status: "signed_in",
+      linkedUid: user.uid,
+      linkedAt: now,
+    });
+  }
+
+  const [refreshedUser, refreshedAdmin] = await Promise.all([
+    getDoc(userRef),
+    getDoc(adminRef),
+  ]);
   const data = refreshedUser.data();
-  const adminData = adminSnapshot.data();
+  const adminData = refreshedAdmin.data();
   const role: CloudRole =
-    adminSnapshot.exists() && adminData?.role === "co_commissioner"
+    refreshedAdmin.exists() &&
+    adminData?.role === "co_commissioner"
       ? "co_commissioner"
-      : adminSnapshot.exists()
+      : refreshedAdmin.exists()
         ? "primary_commissioner"
         : "player";
 
   return {
     id: user.uid,
     display_name:
-      typeof data?.displayName === "string" ? data.displayName : displayName,
+      typeof data?.displayName === "string"
+        ? data.displayName
+        : displayName,
     role,
     created_at:
-      typeof data?.createdAt === "string" ? data.createdAt : now,
+      typeof data?.createdAt === "string"
+        ? data.createdAt
+        : now,
     updated_at:
-      typeof data?.updatedAt === "string" ? data.updatedAt : now,
+      typeof data?.updatedAt === "string"
+        ? data.updatedAt
+        : now,
   };
 }
 
 export function useCloudAuth(): CloudAuthController {
   const [loading, setLoading] = useState(isFirebaseConfigured);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<CloudProfile | null>(null);
+  const [profile, setProfile] =
+    useState<CloudProfile | null>(null);
   const [error, setError] = useState("");
-  const [magicLinkSentTo, setMagicLinkSentTo] = useState("");
+  const [magicLinkSentTo, setMagicLinkSentTo] =
+    useState("");
 
-  const loadProfile = useCallback(async (nextUser: User | null) => {
-    if (!nextUser) {
-      setProfile(null);
-      return;
-    }
+  const loadProfile = useCallback(
+    async (nextUser: User | null) => {
+      if (!nextUser) {
+        setProfile(null);
+        return;
+      }
 
-    try {
-      setProfile(await loadOrCreateProfile(nextUser));
-      setError("");
-    } catch (caught) {
-      setProfile(null);
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "The Firebase player profile could not be loaded.",
-      );
-    }
-  }, []);
+      try {
+        setProfile(await loadOrCreateProfile(nextUser));
+        setError("");
+      } catch (caught) {
+        setProfile(null);
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "The Firebase player profile could not be loaded.",
+        );
+      }
+    },
+    [],
+  );
 
   const refreshProfile = useCallback(async () => {
     await loadProfile(user);
@@ -150,8 +241,14 @@ export function useCloudAuth(): CloudAuthController {
 
     const completeEmailLink = async () => {
       try {
-        if (isSignInWithEmailLink(firebaseAuth, window.location.href)) {
-          let email = window.localStorage.getItem(EMAIL_STORAGE_KEY) ?? "";
+        if (
+          isSignInWithEmailLink(
+            firebaseAuth,
+            window.location.href,
+          )
+        ) {
+          let email =
+            window.localStorage.getItem(EMAIL_STORAGE_KEY) ?? "";
 
           if (!email) {
             email =
@@ -166,11 +263,19 @@ export function useCloudAuth(): CloudAuthController {
             );
           }
 
-          await signInWithEmailLink(firebaseAuth, email, window.location.href);
+          await signInWithEmailLink(
+            firebaseAuth,
+            email,
+            window.location.href,
+          );
           window.localStorage.removeItem(EMAIL_STORAGE_KEY);
 
           const cleanUrl = `${window.location.origin}${import.meta.env.BASE_URL}`;
-          window.history.replaceState({}, document.title, cleanUrl);
+          window.history.replaceState(
+            {},
+            document.title,
+            cleanUrl,
+          );
         }
       } catch (caught) {
         if (active) {
@@ -186,18 +291,21 @@ export function useCloudAuth(): CloudAuthController {
 
     void completeEmailLink();
 
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
-      if (!active) {
-        return;
-      }
-
-      setUser(nextUser);
-      void loadProfile(nextUser).finally(() => {
-        if (active) {
-          setLoading(false);
+    const unsubscribe = onAuthStateChanged(
+      firebaseAuth,
+      (nextUser) => {
+        if (!active) {
+          return;
         }
-      });
-    });
+
+        setUser(nextUser);
+        void loadProfile(nextUser).finally(() => {
+          if (active) {
+            setLoading(false);
+          }
+        });
+      },
+    );
 
     return () => {
       active = false;
@@ -224,13 +332,23 @@ export function useCloudAuth(): CloudAuthController {
     setError("");
     setMagicLinkSentTo("");
 
-    window.localStorage.setItem(EMAIL_STORAGE_KEY, cleanEmail);
-    window.localStorage.setItem(NAME_STORAGE_KEY, cleanName);
+    window.localStorage.setItem(
+      EMAIL_STORAGE_KEY,
+      cleanEmail,
+    );
+    window.localStorage.setItem(
+      NAME_STORAGE_KEY,
+      cleanName,
+    );
 
-    await sendSignInLinkToEmail(firebaseAuth, cleanEmail, {
-      url: `${window.location.origin}${import.meta.env.BASE_URL}`,
-      handleCodeInApp: true,
-    });
+    await sendSignInLinkToEmail(
+      firebaseAuth,
+      cleanEmail,
+      {
+        url: `${window.location.origin}${import.meta.env.BASE_URL}`,
+        handleCodeInApp: true,
+      },
+    );
 
     setMagicLinkSentTo(cleanEmail);
   };

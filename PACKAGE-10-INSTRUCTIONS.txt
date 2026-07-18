@@ -1,0 +1,47 @@
+33 POOL SETUP — PACKAGE 10
+Player Invitations + Commissioner Team + NFL Status Cleanup
+
+Adds:
+- Removes raw ESPN values such as STATUS_SCHEDULED from the commissioner score cards.
+- Cleans already-saved Firebase status text immediately.
+- Commissioner invitation form that sends a Firebase email sign-in link.
+- Invitation tracking with Invite Pending and Signed In status.
+- Resend invitation control.
+- Invited player name is used when the Firebase profile is first created.
+- One protected Primary Commissioner.
+- Two controlled Backup Commissioner slots.
+- Only the Primary Commissioner may assign, replace, or remove backups.
+- Backup Commissioners retain normal commissioner controls and may invite players.
+- Commissioner-role changes use a Firestore transaction and audit record.
+- PWA cache advances to production v12.
+
+Important workflow:
+1. Send an invitation.
+2. The person opens the email link and signs in once.
+3. Their account appears in the signed-in user dropdown.
+4. The Primary Commissioner assigns them to Backup 1 or Backup 2.
+5. The new backup should refresh or sign out and back in to load commissioner access.
+
+Files replaced or added:
+- src/CloudApp.tsx
+- src/App.css
+- src/types/cloud.ts
+- src/features/auth/useCloudAuth.ts
+- src/features/commissioner/CloudInvitationsAndTeamPanel.tsx
+- src/features/commissioner/CloudScoringPanel.tsx
+- src/features/team/useCloudCommissionerTeam.ts
+- src/services/cloudTeamService.ts
+- src/services/nflLiveScoreService.ts
+- public/sw.js
+- firestore.rules
+- FIREBASE-PACKAGE-10-RULES.txt
+
+Install into:
+C:\Users\jidaj\Documents\GitHub\33-Pool-Setup
+
+After installation:
+1. Publish FIREBASE-PACKAGE-10-RULES.txt in Firebase Firestore Rules.
+2. npm run build
+3. git add .
+4. git commit -m "Add player invitations and backup commissioner controls"
+5. git push origin main

@@ -12,6 +12,14 @@ const currency = new Intl.NumberFormat("en-US", {
   currency: "USD",
 });
 
+function cleanProviderDetail(value: string | undefined): string {
+  return (value ?? "")
+    .replace(/\bSTATUS_[A-Z0-9_]+\b/g, "")
+    .replace(/\s*·\s*·\s*/g, " · ")
+    .replace(/^\s*·\s*|\s*·\s*$/g, "")
+    .trim();
+}
+
 function dollars(cents: number): string {
   return currency.format(cents / 100);
 }
@@ -282,14 +290,14 @@ export function CloudScoringPanel({
                       : row?.source === "manual"
                         ? "Manual commissioner override"
                         : row?.status === "live"
-                          ? `LIVE · ${row.status_detail}`
+                          ? `LIVE · ${cleanProviderDetail(row.status_detail)}`
                           : row?.status === "final"
                             ? "Final NFL score"
                             : row?.status === "postponed"
-                              ? `Postponed · ${row.status_detail}`
+                              ? `Postponed · ${cleanProviderDetail(row.status_detail)}`
                               : row?.status === "canceled"
                                 ? "Canceled"
-                                : row?.status_detail || "Scheduled"}
+                                : cleanProviderDetail(row?.status_detail) || "Scheduled"}
                   </small>
                 </div>
               </div>

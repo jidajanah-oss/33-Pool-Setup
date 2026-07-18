@@ -263,3 +263,51 @@ export interface CloudScoringState {
   reopenWeek: (week: number) => Promise<void>;
   markWinnerPaid: (winnerId: string) => Promise<void>;
 }
+
+
+export type CloudCommissionerSlotId = "backup1" | "backup2";
+
+export interface CloudDirectoryUser {
+  uid: string;
+  display_name: string;
+  email: string;
+  role: CloudRole;
+}
+
+export interface CloudPoolInvite {
+  id: string;
+  display_name: string;
+  email: string;
+  status: "pending" | "signed_in";
+  sent_at: string;
+  sent_by_name: string;
+  linked_uid: string | null;
+}
+
+export interface CloudCommissionerMember {
+  uid: string;
+  display_name: string;
+  email: string;
+  role: "primary_commissioner" | "co_commissioner";
+  slot: "primary" | CloudCommissionerSlotId;
+}
+
+export interface CloudCommissionerTeamState {
+  loading: boolean;
+  error: string;
+  users: CloudDirectoryUser[];
+  invites: CloudPoolInvite[];
+  primary: CloudCommissionerMember | null;
+  backups: Record<
+    CloudCommissionerSlotId,
+    CloudCommissionerMember | null
+  >;
+  refresh: () => Promise<void>;
+  sendInvite: (displayName: string, email: string) => Promise<void>;
+  resendInvite: (inviteId: string) => Promise<void>;
+  assignBackup: (
+    slot: CloudCommissionerSlotId,
+    uid: string,
+  ) => Promise<void>;
+  clearBackup: (slot: CloudCommissionerSlotId) => Promise<void>;
+}

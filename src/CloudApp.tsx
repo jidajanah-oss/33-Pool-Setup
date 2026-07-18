@@ -4,6 +4,7 @@ import { rules } from "./data/demoData";
 import { CloudAuthGate } from "./features/auth/CloudAuthGate";
 import { useCloudAuth } from "./features/auth/useCloudAuth";
 import { CloudCommissionerPanel } from "./features/commissioner/CloudCommissionerPanel";
+import { CloudInvitationsAndTeamPanel } from "./features/commissioner/CloudInvitationsAndTeamPanel";
 import { CloudPaymentLedgerPanel } from "./features/commissioner/CloudPaymentLedgerPanel";
 import { CloudScoringPanel } from "./features/commissioner/CloudScoringPanel";
 import { ScheduleGeneratorPanel } from "./features/commissioner/ScheduleGeneratorPanel";
@@ -17,6 +18,7 @@ import { useCloudPayments } from "./features/payments/useCloudPayments";
 import { CloudPotScreen } from "./features/scoring/CloudPotScreen";
 import { CloudWeeklyScoringBoard } from "./features/scoring/CloudWeeklyScoringBoard";
 import { useCloudScoring } from "./features/scoring/useCloudScoring";
+import { useCloudCommissionerTeam } from "./features/team/useCloudCommissionerTeam";
 import type { AppScreen } from "./types/pool";
 
 const nav: Array<{ id: AppScreen; label: string }> = [
@@ -60,6 +62,7 @@ export default function CloudApp() {
     currentWeek,
     canOpenCommissioner,
   );
+  const commissionerTeam = useCloudCommissionerTeam(auth.profile);
   const title = useMemo(
     () =>
       nav.find((item) => item.id === screen)?.label ?? "33 Pool",
@@ -263,6 +266,12 @@ export default function CloudApp() {
                     auth={auth}
                     cloud={cloud}
                   />
+                  {auth.profile && (
+                    <CloudInvitationsAndTeamPanel
+                      currentRole={auth.profile.role}
+                      team={commissionerTeam}
+                    />
+                  )}
                   <CloudScoringPanel
                     onPoolRefresh={cloud.refresh}
                     scoring={scoring}
@@ -349,6 +358,16 @@ export default function CloudApp() {
   );
 }
 
+function cleanNflStatusDetail(
+  value: string | undefined,
+): string {
+  return (value ?? "")
+    .replace(/\bSTATUS_[A-Z0-9_]+\b/g, "")
+    .replace(/\s*·\s*·\s*/g, " · ")
+    .replace(/^\s*·\s*|\s*·\s*$/g, "")
+    .trim();
+}
+
 function CloudHome({
   cloud,
   name,
@@ -403,7 +422,7 @@ function CloudHome({
                       ? "Game postponed"
                       : currentScore?.status === "canceled"
                         ? "Game canceled"
-                        : currentScore?.status_detail ||
+                        : cleanNflStatusDetail(currentScore?.status_detail) ||
                           (cloud.ownClaim
                             ? "Awaiting kickoff"
                             : "No team preview before confirmation")}

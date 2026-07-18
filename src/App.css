@@ -3141,4 +3141,233 @@ small,
   margin-top: 5px;
   overflow-wrap: anywhere;
   font-size: 0.92rem;
+}/* Package 10 — invitations and commissioner team */
+.invite-form-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 11px;
+}
+
+.invite-form-grid label {
+  display: grid;
+  gap: 7px;
+  color: var(--navy-900);
+  font-weight: 800;
+}
+
+.invite-form-grid input,
+.commissioner-role-card select {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 0 13px;
+  background: white;
+  color: var(--navy-900);
+  font: inherit;
+}
+
+.invite-form-grid button {
+  min-height: 50px;
+}
+
+.commissioner-team-grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 11px;
+}
+
+.commissioner-role-card {
+  min-height: 178px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--ice-100);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.commissioner-role-card.primary {
+  border-color: var(--navy-700);
+  background:
+    linear-gradient(145deg, rgba(18, 75, 128, 0.08), transparent),
+    white;
+}
+
+.commissioner-role-card small,
+.commissioner-role-card strong,
+.commissioner-role-card span,
+.commissioner-role-card b {
+  display: block;
+}
+
+.commissioner-role-card small {
+  color: var(--blue-500);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.commissioner-role-card strong {
+  color: var(--navy-900);
+  font-size: 1.12rem;
+}
+
+.commissioner-role-card span {
+  min-height: 42px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.commissioner-role-card b {
+  margin-top: auto;
+  color: var(--navy-700);
+}
+
+.commissioner-role-card select {
+  margin-top: auto;
+}
+
+.commissioner-slot-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.commissioner-slot-actions button {
+  min-height: 44px;
+  border: 1px solid var(--navy-900);
+  border-radius: 12px;
+  background: var(--navy-900);
+  color: white;
+  font-weight: 900;
+}
+
+.commissioner-slot-actions button.danger {
+  border-color: #d9aeb4;
+  background: #fff5f6;
+  color: var(--danger);
+}
+
+.invite-list-heading {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 13px;
+}
+
+.invite-list-heading h3,
+.invite-list-heading p {
+  margin: 0;
+}
+
+.invite-list-heading p {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.invite-list-heading button,
+.cloud-invite-list button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 13px;
+  background: white;
+  color: var(--navy-900);
+  font-weight: 900;
+}
+
+.cloud-invite-list {
+  margin-top: 12px;
+  display: grid;
+  gap: 9px;
+}
+
+.cloud-invite-list article {
+  min-height: 76px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.cloud-invite-list article > div:first-child {
+  min-width: 0;
+}
+
+.cloud-invite-list strong,
+.cloud-invite-list span,
+.cloud-invite-list small {
+  display: block;
+}
+
+.cloud-invite-list article > div:first-child span,
+.cloud-invite-list small {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cloud-invite-list article > div:last-child {
+  min-width: 118px;
+  text-align: right;
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+}
+
+.invite-linked,
+.invite-pending {
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-weight: 900;
+}
+
+.invite-linked {
+  background: #dff4eb;
+  color: var(--success);
+}
+
+.invite-pending {
+  background: #fff4d9;
+  color: #8b5b00;
+}
+
+@media (max-width: 620px) {
+  .invite-list-heading,
+  .cloud-invite-list article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .invite-list-heading button,
+  .cloud-invite-list article > div:last-child,
+  .cloud-invite-list button {
+    width: 100%;
+  }
+
+  .cloud-invite-list article > div:last-child {
+    justify-items: stretch;
+    text-align: left;
+  }
+}
+
+@media (min-width: 720px) {
+  .invite-form-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .commissioner-team-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }

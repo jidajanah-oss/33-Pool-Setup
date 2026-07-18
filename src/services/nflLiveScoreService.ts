@@ -66,16 +66,31 @@ function parseScore(value: unknown): number | null {
   return null;
 }
 
+function cleanStatusText(value: unknown): string {
+  return asString(value)
+    .replace(/\bSTATUS_[A-Z0-9_]+\b/g, "")
+    .replace(/\s*·\s*·\s*/g, " · ")
+    .replace(/^\s*·\s*|\s*·\s*$/g, "")
+    .trim();
+}
+
 function statusText(type: EspnStatusType | undefined): string {
-  return [
+  const unique = new Map<string, string>();
+
+  [
     type?.shortDetail,
     type?.detail,
     type?.description,
-    type?.name,
-  ]
-    .map(asString)
-    .filter(Boolean)
-    .join(" · ");
+  ].forEach((value) => {
+    const cleaned = cleanStatusText(value);
+    const key = cleaned.toLowerCase();
+
+    if (cleaned && !unique.has(key)) {
+      unique.set(key, cleaned);
+    }
+  });
+
+  return [...unique.values()].join(" · ");
 }
 
 function statusFromEspn(type: EspnStatusType | undefined) {
