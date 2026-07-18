@@ -3653,3 +3653,64 @@ small,
     max-width: none;
   }
 }
+
+/* Package 10.12 — restore normal mobile page scrolling */
+@media (max-width: 899px) {
+  html {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100%;
+    height: auto;
+    overflow-x: clip;
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
+  }
+
+  body {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    height: auto;
+    overflow: visible;
+    overscroll-behavior-y: auto;
+    touch-action: pan-y pinch-zoom;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #root,
+  .app-shell,
+  .app-stage {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    height: auto;
+    overflow: visible;
+  }
+
+  .app-content,
+  .screen-stack {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+    overflow: visible;
+  }
+
+  /*
+   * Clip only the accidental horizontal overflow on the Commissioner
+   * content. Do not create a second vertical scroll container.
+   */
+  .commissioner-screen {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto;
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  .phone-tab-bar {
+    touch-action: manipulation;
+  }
+}
