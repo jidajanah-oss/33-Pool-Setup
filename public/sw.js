@@ -1,75 +1,64 @@
-const CACHE_NAME = "33-pool-production-v9";
+const CACHE_NAME = "33-pool-production-v10";
+const APP_ROOT = new URL("./", self.location).href;
 const APP_SHELL = [
-  "./",
-  "./manifest.webmanifest",
-  "./app-icon-192.png",
-  "./app-icon-512.png",
-  "./maskable-icon-512.png",
-  "./apple-touch-icon.png",
-  "./favicon-32.png",
+  APP_ROOT,
+  new URL("manifest.webmanifest", APP_ROOT).href,
+  new URL("app-icon-192.png", APP_ROOT).href,
+  new URL("app-icon-512.png", APP_ROOT).href,
+  new URL("maskable-icon-512.png", APP_ROOT).href,
+  new URL("apple-touch-icon.png", APP_ROOT).href,
+  new URL("favicon-32.png", APP_ROOT).href,
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)),
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key !== CACHE_NAME)
-            .map((key) => caches.delete(key)),
-        ),
-      ),
-  );
+  event.waitUntil(Promise.all([
+    caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))),
+    self.registration.navigationPreload ? self.registration.navigationPreload.enable() : Promise.resolve(),
+  ]));
   self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") {
-    return;
-  }
-
+  if (event.request.method !== "GET") return;
   const requestUrl = new URL(event.request.url);
-
-  if (requestUrl.origin !== self.location.origin) {
-    return;
-  }
+  if (requestUrl.origin !== self.location.origin) return;
 
   if (event.request.mode === "navigate") {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          void caches.open(CACHE_NAME).then((cache) => cache.put("./", copy));
-          return response;
-        })
-        .catch(async () => (await caches.match("./")) || Response.error()),
-    );
+    event.respondWith((async () => {
+      const preload = await event.preloadResponse;
+      if (preload) {
+        const copy = preload.clone();
+        event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(APP_ROOT, copy)));
+        return preload;
+      }
+      try {
+        const response = await fetch(event.request);
+        const copy = response.clone();
+        event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(APP_ROOT, copy)));
+        return response;
+      } catch {
+        return (await caches.match(APP_ROOT)) || Response.error();
+      }
+    })());
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
-        .then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            void caches
-              .open(CACHE_NAME)
-              .then((cache) => cache.put(event.request, copy));
-          }
-          return response;
-        })
-        .catch(() => cached || Response.error());
-
-      return cached || network;
-    }),
-  );
+  event.respondWith((async () => {
+    const cached = await caches.match(event.request);
+    try {
+      const response = await fetch(event.request);
+      if (response.ok) {
+        const copy = response.clone();
+        event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)));
+      }
+      return response;
+    } catch {
+      return cached || Response.error();
+    }
+  })());
 });
