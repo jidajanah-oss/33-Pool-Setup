@@ -1,0 +1,25 @@
+{
+  "name": "33 Pool Setup",
+  "short_name": "33 Pool",
+  "description": "Mobile NFL exact-33 pool tracker",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#edf3f8",
+  "theme_color": "#001e44",
+  "icons": [
+    {
+      "src": "app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "maskable-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
