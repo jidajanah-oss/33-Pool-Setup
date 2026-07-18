@@ -122,3 +122,115 @@ export interface CloudPaymentState {
   loadTransactions: (uid: string) => Promise<CloudPaymentTransaction[]>;
   recordPayment: (input: CloudPaymentEntryInput) => Promise<void>;
 }
+
+export type CloudGameStatus = "not_started" | "final" | "bye";
+
+export interface CloudTeamScore {
+  team_code: string;
+  team_name: string;
+  status: CloudGameStatus;
+  score: number | null;
+}
+
+export interface CloudScoringAssignment {
+  schedule_number: number;
+  uid: string | null;
+  player_name: string | null;
+  team_code: string;
+  team_name: string;
+  is_bye: boolean;
+}
+
+export type CloudResolutionType =
+  | "carryover"
+  | "exact_33"
+  | "closest_33";
+
+export type CloudPayoutStatus = "pending" | "on_hold" | "paid";
+
+export interface CloudWinnerRecord {
+  id: string;
+  week: number;
+  uid: string;
+  player_name: string;
+  schedule_number: number;
+  team_code: string;
+  team_name: string;
+  final_score: number;
+  distance_from_33: number;
+  payout_cents: number;
+  payout_status: CloudPayoutStatus;
+  payment_eligible_at_finalization: boolean;
+  finalized_at: string;
+  paid_at: string | null;
+}
+
+export interface CloudWeeklyResult {
+  week: number;
+  weekly_addition_cents: number;
+  carryover_in_cents: number;
+  total_pot_cents: number;
+  resolution_type: CloudResolutionType;
+  qualifying_team_codes: string[];
+  winner_count: number;
+  total_payout_cents: number;
+  carryover_out_cents: number;
+  finalized_at: string;
+  finalized_by_uid: string;
+  finalized_by_name: string;
+}
+
+export interface CloudResolutionWinnerPreview {
+  uid: string | null;
+  player_name: string;
+  schedule_number: number;
+  team_code: string;
+  team_name: string;
+  final_score: number;
+  distance_from_33: number;
+  payout_cents: number;
+}
+
+export interface CloudResolutionPreview {
+  week: number;
+  complete_scores: boolean;
+  claimed_count: number;
+  all_players_claimed: boolean;
+  weekly_addition_cents: number;
+  carryover_in_cents: number;
+  total_pot_cents: number;
+  resolution_type: CloudResolutionType;
+  qualifying_team_codes: string[];
+  winners: CloudResolutionWinnerPreview[];
+  carryover_out_cents: number;
+  can_finalize: boolean;
+  blocking_reasons: string[];
+}
+
+export interface CloudScoringWeekSnapshot {
+  week: number;
+  scores: CloudTeamScore[];
+  result: CloudWeeklyResult | null;
+  winners: CloudWinnerRecord[];
+  assignments: CloudScoringAssignment[];
+}
+
+export interface CloudScoringState {
+  loading: boolean;
+  error: string;
+  selectedWeek: number;
+  currentWeek: number;
+  scores: CloudTeamScore[];
+  result: CloudWeeklyResult | null;
+  winners: CloudWinnerRecord[];
+  assignments: CloudScoringAssignment[];
+  history: CloudWeeklyResult[];
+  currentPotCents: number;
+  setSelectedWeek: (week: number) => void;
+  refresh: () => Promise<void>;
+  refreshWeek: (week: number) => Promise<void>;
+  saveScores: (week: number, scores: CloudTeamScore[]) => Promise<void>;
+  finalizeWeek: (week: number) => Promise<void>;
+  reopenWeek: (week: number) => Promise<void>;
+  markWinnerPaid: (winnerId: string) => Promise<void>;
+}

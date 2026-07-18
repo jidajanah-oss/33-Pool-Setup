@@ -1,19 +1,22 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { rules } from "./data/demoData";
 import { CloudAuthGate } from "./features/auth/CloudAuthGate";
 import { useCloudAuth } from "./features/auth/useCloudAuth";
 import { CloudCommissionerPanel } from "./features/commissioner/CloudCommissionerPanel";
 import { CloudPaymentLedgerPanel } from "./features/commissioner/CloudPaymentLedgerPanel";
+import { CloudScoringPanel } from "./features/commissioner/CloudScoringPanel";
 import { ScheduleGeneratorPanel } from "./features/commissioner/ScheduleGeneratorPanel";
 import {
   CloudMySchedule,
   CloudNumberBoard,
-  CloudWeeklyBoard,
 } from "./features/enrollment/CloudEnrollmentScreens";
 import { useCloudEnrollment } from "./features/enrollment/useCloudEnrollment";
 import { CloudPaymentsScreen } from "./features/payments/CloudPaymentsScreen";
 import { useCloudPayments } from "./features/payments/useCloudPayments";
+import { CloudPotScreen } from "./features/scoring/CloudPotScreen";
+import { CloudWeeklyScoringBoard } from "./features/scoring/CloudWeeklyScoringBoard";
+import { useCloudScoring } from "./features/scoring/useCloudScoring";
 import type { AppScreen } from "./types/pool";
 
 const nav: Array<{ id: AppScreen; label: string }> = [
@@ -40,6 +43,11 @@ export default function CloudApp() {
     currentWeek,
     canOpenCommissioner,
   );
+  const scoring = useCloudScoring(
+    auth.profile,
+    currentWeek,
+    canOpenCommissioner,
+  );
   const title = useMemo(
     () =>
       nav.find((item) => item.id === screen)?.label ?? "33 Pool",
@@ -51,6 +59,12 @@ export default function CloudApp() {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  useEffect(() => {
+    if (screen === "home") {
+      scoring.setSelectedWeek(currentWeek);
+    }
+  }, [currentWeek, screen]);
 
   return (
     <CloudAuthGate auth={auth}>
@@ -146,6 +160,7 @@ export default function CloudApp() {
                 name={auth.profile?.display_name ?? "Player"}
                 onNavigate={setScreen}
                 payments={payments}
+                scoring={scoring}
               />
             )}
             {screen === "numbers" && auth.profile && (
@@ -161,9 +176,14 @@ export default function CloudApp() {
               />
             )}
             {screen === "weekly" && (
-              <CloudWeeklyBoard cloud={cloud} />
+              <CloudWeeklyScoringBoard
+                cloud={cloud}
+                scoring={scoring}
+              />
             )}
-            {screen === "pot" && <CloudPot />}
+            {screen === "pot" && (
+              <CloudPotScreen scoring={scoring} />
+            )}
             {screen === "payments" && auth.profile && (
               <CloudPaymentsScreen
                 currentWeek={currentWeek}
@@ -178,6 +198,10 @@ export default function CloudApp() {
                   <CloudCommissionerPanel
                     auth={auth}
                     cloud={cloud}
+                  />
+                  <CloudScoringPanel
+                    onPoolRefresh={cloud.refresh}
+                    scoring={scoring}
                   />
                   <CloudPaymentLedgerPanel
                     currentWeek={currentWeek}
@@ -260,44 +284,55 @@ function CloudHome({
   name,
   onNavigate,
   payments,
+  scoring,
 }: {
   cloud: ReturnType<typeof useCloudEnrollment>;
   name: string;
   onNavigate: (screen: AppScreen) => void;
   payments: ReturnType<typeof useCloudPayments>;
+  scoring: ReturnType<typeof useCloudScoring>;
 }) {
-  const first = cloud.ownSchedule.find(
-    (assignment) => assignment.week === 1,
+  const currentAssignment = cloud.ownSchedule.find(
+    (assignment) => assignment.week === scoring.currentWeek,
   );
+  const currentScore =
+    scoring.selectedWeek === scoring.currentWeek
+      ? scoring.scores.find(
+          (score) =>
+            score.team_code === currentAssignment?.teamCode,
+        )
+      : undefined;
   const account = payments.myAccount;
 
   return (
     <div className="screen-stack">
       <section className="score-hero">
         <div className="hero-topline">
-          <span>Before Week 1</span>
+          <span>Week {scoring.currentWeek}</span>
           <span className="live-dot">Firebase connected</span>
         </div>
         <p>
           {cloud.ownClaim
-            ? `${name}'s Week 1 assignment`
+            ? `${name}'s Week ${scoring.currentWeek} assignment`
             : "Your hidden schedule"}
         </p>
         <div className="hero-team">
           <div className="team-roundel">
-            {first?.teamCode ?? "?"}
+            {currentAssignment?.teamCode ?? "?"}
           </div>
           <div>
-            <h2>{first?.teamName ?? "Choose a number"}</h2>
+            <h2>{currentAssignment?.teamName ?? "Choose a number"}</h2>
             <span>
-              {first?.isBye
+              {currentAssignment?.isBye
                 ? "Your pool bye"
-                : cloud.ownClaim
-                  ? "Schedule revealed"
-                  : "No team preview before confirmation"}
+                : currentScore?.status === "final"
+                  ? `Final score: ${currentScore.score}`
+                  : cloud.ownClaim
+                    ? "Awaiting final score"
+                    : "No team preview before confirmation"}
             </span>
           </div>
-          <strong>{first?.isBye ? "BYE" : "33"}</strong>
+          <strong>{currentAssignment?.isBye ? "BYE" : currentScore?.score ?? "33"}</strong>
         </div>
         <div className="target-row">
           <span>
@@ -357,7 +392,15 @@ function CloudHome({
               : "Loading ledger"
           }
         />
-        <Stat label="Target" value="33" helper="Final score only" />
+        <Stat
+          label="Current pot"
+          value={new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+            maximumFractionDigits: 0,
+          }).format(scoring.currentPotCents / 100)}
+          helper="Exact 33 wins"
+        />
       </section>
 
       <section className="section-card">
@@ -408,26 +451,6 @@ function Stat({
       <strong>{value}</strong>
       <span>{helper}</span>
     </article>
-  );
-}
-
-function CloudPot() {
-  return (
-    <div className="screen-stack">
-      <section className="pot-hero">
-        <p>Starting Week 1 pot</p>
-        <strong>$96</strong>
-        <span>$3 from all 32 players</span>
-      </section>
-      <section className="section-card">
-        <h2>Cloud pot tracking comes next</h2>
-        <p className="cloud-muted-copy">
-          The Firebase payment ledger is now active. Live scores,
-          rolling-pot accounting, and exact-33 payouts remain separate
-          controlled packages.
-        </p>
-      </section>
-    </div>
   );
 }
 

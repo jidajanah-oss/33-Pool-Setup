@@ -2654,4 +2654,317 @@ small,
   .payment-account-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}/* Package 7 — weekly scoring, rolling pot, and payout records */
+.cloud-pot-history,
+.cloud-winner-list,
+.commissioner-winner-list {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.cloud-pot-history article,
+.cloud-winner-list article,
+.commissioner-winner-list article {
+  min-height: 76px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--ice-100);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.cloud-pot-history article > div:last-child,
+.cloud-winner-list article > div:last-child {
+  text-align: right;
+}
+
+.cloud-pot-history strong,
+.cloud-pot-history span,
+.cloud-pot-history small,
+.cloud-winner-list strong,
+.cloud-winner-list span,
+.commissioner-winner-list strong,
+.commissioner-winner-list span {
+  display: block;
+}
+
+.cloud-pot-history span,
+.cloud-winner-list span,
+.commissioner-winner-list span {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.cloud-pot-week {
+  width: 46px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--navy-900);
+  color: white;
+  display: grid;
+  place-items: center;
+  align-content: center;
+}
+
+.cloud-pot-week small {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.winner-row {
+  border: 3px solid var(--success) !important;
+  background: #f2fbf7 !important;
+}
+
+.cloud-score-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 9px;
+}
+
+.cloud-score-card {
+  min-height: 76px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cloud-score-card > div:first-child {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.cloud-score-card strong,
+.cloud-score-card small {
+  display: block;
+}
+
+.cloud-score-card strong {
+  color: var(--navy-900);
+}
+
+.cloud-score-card small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.cloud-score-card input {
+  width: 76px;
+  min-height: 50px;
+  border: 2px solid var(--blue-200);
+  border-radius: 13px;
+  background: var(--ice-100);
+  color: var(--navy-900);
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.cloud-score-card input:focus {
+  border-color: var(--blue-500);
+  outline: none;
+}
+
+.cloud-score-card.bye {
+  background: #e9eef4;
+}
+
+.scoring-preview-card {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--blue-200);
+  border-radius: 18px;
+  background: #f8fbfe;
+}
+
+.scoring-preview-money {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.scoring-preview-money > div {
+  min-height: 92px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: white;
+}
+
+.scoring-preview-money small,
+.scoring-preview-money strong {
+  display: block;
+}
+
+.scoring-preview-money small {
+  color: var(--muted);
+}
+
+.scoring-preview-money strong {
+  margin-top: 8px;
+  color: var(--navy-900);
+  font-size: 1.35rem;
+}
+
+.scoring-preview-card h3 {
+  margin: 16px 0 0;
+  color: var(--navy-900);
+  line-height: 1.45;
+}
+
+.scoring-preview-winners {
+  margin-top: 14px;
+  display: grid;
+  gap: 9px;
+}
+
+.scoring-preview-winners article {
+  min-height: 68px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: white;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.scoring-preview-winners strong,
+.scoring-preview-winners small {
+  display: block;
+}
+
+.scoring-preview-winners small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.scoring-blockers {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-left: 4px solid var(--danger);
+  border-radius: 10px;
+  background: #fff4f6;
+}
+
+.scoring-blockers p {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 800;
+}
+
+.scoring-blockers p + p {
+  margin-top: 7px;
+}
+
+.cloud-score-actions {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 9px;
+}
+
+.cloud-score-actions button,
+.commissioner-winner-list button {
+  min-height: 50px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 0 14px;
+  background: var(--ice-100);
+  color: var(--navy-900);
+  font-weight: 900;
+}
+
+.cloud-score-actions .generator-primary {
+  border-color: var(--navy-900);
+  background: var(--navy-900);
+  color: white;
+}
+
+.scoring-reopen-button {
+  border-color: #e2b5ba !important;
+  background: #fff4f6 !important;
+  color: var(--danger) !important;
+}
+
+.commissioner-winner-list {
+  margin-top: 18px;
+}
+
+.commissioner-winner-list h3 {
+  margin: 0;
+  color: var(--navy-900);
+}
+
+.commissioner-winner-list article {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.commissioner-winner-list article > div:nth-child(2) {
+  text-align: right;
+}
+
+.commissioner-winner-list button {
+  min-width: 108px;
+  background: var(--navy-900);
+  color: white;
+}
+
+.commissioner-winner-list button:disabled {
+  background: var(--ice-200);
+  color: var(--muted);
+}
+
+@media (max-width: 620px) {
+  .cloud-pot-history article {
+    grid-template-columns: 46px minmax(0, 1fr);
+  }
+
+  .cloud-pot-history article > div:last-child {
+    grid-column: 1 / -1;
+    padding-left: 58px;
+    text-align: left;
+  }
+
+  .commissioner-winner-list article {
+    grid-template-columns: 1fr auto;
+  }
+
+  .commissioner-winner-list article > button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (min-width: 700px) {
+  .cloud-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scoring-preview-money {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .cloud-score-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1250px) {
+  .cloud-score-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }

@@ -1,0 +1,41 @@
+33 POOL SETUP — PACKAGE 7
+Firebase Weekly Scoring, Rolling Pot, and Payout Records
+
+Adds:
+- Commissioner final-score entry for all 32 NFL teams.
+- Official NFL bye teams disabled automatically for each week.
+- Draft score saving in Firestore.
+- Exact final-score-of-33 winner detection.
+- Multiple exact-33 winners split the complete pot.
+- No-winner carryover plus the next $96 weekly addition.
+- Week 18 closest-to-33 resolution, over or under.
+- Multiple equally close Week 18 teams split the pot.
+- Penny remainders are distributed one cent at a time by schedule number so
+  the full pot is always awarded.
+- Winner records and earned amounts added to Firebase payment accounts.
+- Prize status: pending, on hold when not paid through the winning week, or paid.
+- Commissioner Mark Paid control.
+- Reopen only the most recently finalized week before a prize is paid.
+- Player Weekly Board final scores and winner highlights.
+- Player Pot Tracker with finalized weekly history.
+- Next week's public assignments publish automatically after finalization.
+- Opponents remain hidden everywhere.
+
+Important:
+Package 7 requires all 32 schedule numbers to be claimed before an official
+week can be finalized. Scores may be entered and saved before that.
+
+Install:
+1. Copy the package files into:
+   C:\Users\jidaj\Documents\GitHub\33-Pool-Setup
+2. Publish FIREBASE-PACKAGE-7-RULES.txt in Firestore Rules.
+3. Run:
+   npm run build
+   npm run dev
+
+Safe test:
+- Enter a few Week 1 scores and click Save Draft Scores.
+- Confirm the Weekly Board displays those saved final scores.
+- Official Finalize remains disabled until all 32 players have claimed.
+- Do not use fake final scores on the live season unless you intend to keep
+  them; draft scores can be edited before finalization.
