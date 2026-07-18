@@ -1,11 +1,11 @@
 import { sendSignInLinkToEmail } from "firebase/auth";
 import {
   collection,
+  deleteDoc,
   deleteField,
   doc,
   getDoc,
   getDocsFromServer,
-  runTransaction,
   setDoc,
   updateDoc,
 } from "firebase/firestore";
@@ -437,17 +437,29 @@ export async function assignCloudBackupCommissioner(
   const primary = requireCurrentUser();
   const selectedUserRef = doc(db, "users", uid);
   const targetAdminRef = doc(db, "admins", uid);
-  const auditRef = doc(collection(db, "audit"));
   const now = new Date().toISOString();
 
-  /*
-   * Backups are stored directly in admins/{uid}. The slot field identifies
-   * Backup Commissioner 1 or 2. This removes the unnecessary second
-   * commissionerSlots write that was being rejected by Firestore.
-   */
-  const adminSnapshots = await getDocsFromServer(
-    collection(db, "admins"),
-  );
+  const [selectedUserSnapshot, targetAdminSnapshot, adminSnapshots] =
+    await Promise.all([
+      getDoc(selectedUserRef),
+      getDoc(targetAdminRef),
+      getDocsFromServer(collection(db, "admins")),
+    ]);
+
+  if (!selectedUserSnapshot.exists()) {
+    throw new Error(
+      "That person must sign in once before being assigned as a backup commissioner.",
+    );
+  }
+
+  if (
+    targetAdminSnapshot.exists() &&
+    targetAdminSnapshot.data().role === "primary_commissioner"
+  ) {
+    throw new Error(
+      "The Primary Commissioner cannot be assigned to a backup slot.",
+    );
+  }
 
   let previousUidForSlot = "";
 
@@ -474,42 +486,19 @@ export async function assignCloudBackupCommissioner(
     }
   });
 
-  await runTransaction(db, async (transaction) => {
-    const [selectedUserSnapshot, targetAdminSnapshot] =
-      await Promise.all([
-        transaction.get(selectedUserRef),
-        transaction.get(targetAdminRef),
-      ]);
+  const userData = selectedUserSnapshot.data() as StoredUser;
+  const displayName = asString(
+    userData.displayName,
+    "Backup Commissioner",
+  );
+  const email = asString(userData.email);
 
-    if (!selectedUserSnapshot.exists()) {
-      throw new Error(
-        "That person must sign in once before being assigned as a backup commissioner.",
-      );
-    }
-
-    if (
-      targetAdminSnapshot.exists() &&
-      targetAdminSnapshot.data().role === "primary_commissioner"
-    ) {
-      throw new Error(
-        "The Primary Commissioner cannot be assigned to a backup slot.",
-      );
-    }
-
-    const userData = selectedUserSnapshot.data() as StoredUser;
-    const displayName = asString(
-      userData.displayName,
-      "Backup Commissioner",
-    );
-    const email = asString(userData.email);
-
-    if (previousUidForSlot) {
-      transaction.delete(
-        doc(db, "admins", previousUidForSlot),
-      );
-    }
-
-    transaction.set(targetAdminRef, {
+  /*
+   * Write the protected role directly. Audit logging is intentionally
+   * secondary so an audit permission issue cannot block the role change.
+   */
+  try {
+    await setDoc(targetAdminRef, {
       role: "co_commissioner",
       displayName,
       email,
@@ -517,7 +506,22 @@ export async function assignCloudBackupCommissioner(
       updatedAt: now,
     });
 
-    transaction.set(auditRef, {
+    if (previousUidForSlot) {
+      await deleteDoc(doc(db, "admins", previousUidForSlot));
+    }
+  } catch (caught) {
+    const detail =
+      caught instanceof Error
+        ? caught.message
+        : "Firebase rejected the backup role write.";
+
+    throw new Error(
+      `${detail} Signed in as ${primary.email ?? "unknown email"} (${primary.uid}).`,
+    );
+  }
+
+  try {
+    await setDoc(doc(collection(db, "audit")), {
       actionType: "backup_commissioner_assigned",
       slot,
       affectedUid: uid,
@@ -526,7 +530,9 @@ export async function assignCloudBackupCommissioner(
       commissionerUid: primary.uid,
       createdAt: now,
     });
-  });
+  } catch {
+    // The role assignment is authoritative. Audit failure must not undo it.
+  }
 }
 
 export async function clearCloudBackupCommissioner(
@@ -540,7 +546,6 @@ export async function clearCloudBackupCommissioner(
 
   const db = requireFirestore();
   const primary = requireCurrentUser();
-  const auditRef = doc(collection(db, "audit"));
   const now = new Date().toISOString();
   const adminSnapshots = await getDocsFromServer(
     collection(db, "admins"),
@@ -565,9 +570,21 @@ export async function clearCloudBackupCommissioner(
     "Backup Commissioner",
   );
 
-  await runTransaction(db, async (transaction) => {
-    transaction.delete(doc(db, "admins", assigned.id));
-    transaction.set(auditRef, {
+  try {
+    await deleteDoc(doc(db, "admins", assigned.id));
+  } catch (caught) {
+    const detail =
+      caught instanceof Error
+        ? caught.message
+        : "Firebase rejected the backup removal.";
+
+    throw new Error(
+      `${detail} Signed in as ${primary.email ?? "unknown email"} (${primary.uid}).`,
+    );
+  }
+
+  try {
+    await setDoc(doc(collection(db, "audit")), {
       actionType: "backup_commissioner_removed",
       slot,
       affectedUid: assigned.id,
@@ -575,5 +592,7 @@ export async function clearCloudBackupCommissioner(
       commissionerUid: primary.uid,
       createdAt: now,
     });
-  });
+  } catch {
+    // The role removal is authoritative. Audit failure must not restore it.
+  }
 }
