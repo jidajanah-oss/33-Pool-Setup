@@ -13,7 +13,10 @@ service cloud.firestore {
 
     function isPrimary() {
       return signedIn()
-        && request.auth.uid == 'jytf6FyhvoSnMEOsaV6OyWPNXfv2';
+        && (
+          request.auth.uid == 'jytf6FyhvoSnMEOsaV6OyWPNXfv2'
+          || request.auth.token.email == 'jidajanah@gmail.com'
+        );
     }
 
     function isCommissioner() {

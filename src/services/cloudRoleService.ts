@@ -5,6 +5,9 @@ import type { CloudRole } from "../types/cloud";
 export const PRIMARY_COMMISSIONER_UID =
   "jytf6FyhvoSnMEOsaV6OyWPNXfv2";
 
+export const PRIMARY_COMMISSIONER_EMAIL =
+  "jidajanah@gmail.com";
+
 interface StoredCommissionerTeam {
   backup1Uid?: unknown;
   backup2Uid?: unknown;
@@ -14,10 +17,37 @@ function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+function normalizeEmail(value: string | null | undefined): string {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+export function isPrimaryCommissionerIdentity(
+  uid: string,
+  email?: string | null,
+): boolean {
+  if (uid === PRIMARY_COMMISSIONER_UID) {
+    return true;
+  }
+
+  if (normalizeEmail(email) === PRIMARY_COMMISSIONER_EMAIL) {
+    return true;
+  }
+
+  const currentUser = requireFirebaseAuth().currentUser;
+
+  return Boolean(
+    currentUser &&
+      currentUser.uid === uid &&
+      normalizeEmail(currentUser.email) ===
+        PRIMARY_COMMISSIONER_EMAIL,
+  );
+}
+
 export async function getCloudRoleForUid(
   uid: string,
+  email?: string | null,
 ): Promise<CloudRole> {
-  if (uid === PRIMARY_COMMISSIONER_UID) {
+  if (isPrimaryCommissionerIdentity(uid, email)) {
     return "primary_commissioner";
   }
 
@@ -47,7 +77,7 @@ export async function getCurrentCloudRole(): Promise<CloudRole> {
     throw new Error("Sign in to Firebase first.");
   }
 
-  return getCloudRoleForUid(user.uid);
+  return getCloudRoleForUid(user.uid, user.email);
 }
 
 export async function requireCloudCommissioner(): Promise<CloudRole> {

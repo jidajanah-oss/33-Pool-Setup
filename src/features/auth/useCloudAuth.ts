@@ -26,7 +26,10 @@ import {
   requireFirestore,
 } from "../../lib/firebase";
 import type { CloudProfile } from "../../types/cloud";
-import { getCloudRoleForUid } from "../../services/cloudRoleService";
+import {
+  getCloudRoleForUid,
+  PRIMARY_COMMISSIONER_EMAIL,
+} from "../../services/cloudRoleService";
 
 const EMAIL_STORAGE_KEY = "33-pool-firebase-email";
 const NAME_STORAGE_KEY = "33-pool-firebase-display-name";
@@ -163,11 +166,15 @@ async function loadOrCreateProfile(
     });
   }
 
-  const [refreshedUser, role] = await Promise.all([
+  const [refreshedUser, resolvedRole] = await Promise.all([
     getDoc(userRef),
-    getCloudRoleForUid(user.uid),
+    getCloudRoleForUid(user.uid, user.email),
   ]);
   const data = refreshedUser.data();
+  const role =
+    email === PRIMARY_COMMISSIONER_EMAIL
+      ? "primary_commissioner"
+      : resolvedRole;
 
   return {
     id: user.uid,

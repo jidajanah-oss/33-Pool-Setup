@@ -20,6 +20,7 @@ import { CloudWeeklyScoringBoard } from "./features/scoring/CloudWeeklyScoringBo
 import { useCloudScoring } from "./features/scoring/useCloudScoring";
 import { useCloudCommissionerTeam } from "./features/team/useCloudCommissionerTeam";
 import type { AppScreen } from "./types/pool";
+import { PRIMARY_COMMISSIONER_EMAIL } from "./services/cloudRoleService";
 
 const nav: Array<{ id: AppScreen; label: string }> = [
   { id: "home", label: "Home" },
@@ -76,7 +77,11 @@ export default function CloudApp() {
     useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isIos, setIsIos] = useState(false);
+  const isPrimaryEmail =
+    auth.user?.email?.trim().toLowerCase() ===
+    PRIMARY_COMMISSIONER_EMAIL;
   const canOpenCommissioner =
+    isPrimaryEmail ||
     auth.profile?.role === "primary_commissioner" ||
     auth.profile?.role === "co_commissioner";
   const currentWeek = cloud.poolStatus?.current_week ?? 1;
@@ -210,7 +215,9 @@ export default function CloudApp() {
               <strong>{auth.profile?.display_name}</strong>
               <span>
                 {profileSubtitle(
-                  auth.profile?.role,
+                  isPrimaryEmail
+                    ? "primary_commissioner"
+                    : auth.profile?.role,
                   cloud.ownClaim?.schedule_number,
                 )}
               </span>
@@ -258,7 +265,9 @@ export default function CloudApp() {
                 <strong>{auth.profile?.display_name}</strong>
                 <small>
                   {profileSubtitle(
-                    auth.profile?.role,
+                    isPrimaryEmail
+                      ? "primary_commissioner"
+                      : auth.profile?.role,
                     cloud.ownClaim?.schedule_number,
                   )}
                 </small>
