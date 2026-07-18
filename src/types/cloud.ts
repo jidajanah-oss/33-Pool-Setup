@@ -123,13 +123,38 @@ export interface CloudPaymentState {
   recordPayment: (input: CloudPaymentEntryInput) => Promise<void>;
 }
 
-export type CloudGameStatus = "not_started" | "final" | "bye";
+export type CloudGameStatus =
+  | "not_started"
+  | "live"
+  | "final"
+  | "postponed"
+  | "canceled"
+  | "bye";
+
+export type CloudScoreSource = "manual" | "espn" | "unknown";
 
 export interface CloudTeamScore {
   team_code: string;
   team_name: string;
   status: CloudGameStatus;
   score: number | null;
+  source: CloudScoreSource;
+  event_id: string | null;
+  kickoff_at: string | null;
+  status_detail: string;
+  synced_at: string | null;
+}
+
+export interface CloudNflSyncSummary {
+  provider: string;
+  week: number;
+  fetched_at: string;
+  event_count: number;
+  team_count: number;
+  final_team_count: number;
+  live_team_count: number;
+  scheduled_team_count: number;
+  exception_team_count: number;
 }
 
 export interface CloudScoringAssignment {
@@ -226,10 +251,14 @@ export interface CloudScoringState {
   assignments: CloudScoringAssignment[];
   history: CloudWeeklyResult[];
   currentPotCents: number;
+  providerSummary: CloudNflSyncSummary | null;
+  providerLoading: boolean;
+  providerError: string;
   setSelectedWeek: (week: number) => void;
   refresh: () => Promise<void>;
   refreshWeek: (week: number) => Promise<void>;
   saveScores: (week: number, scores: CloudTeamScore[]) => Promise<void>;
+  syncFromProvider: (week: number) => Promise<CloudNflSyncSummary>;
   finalizeWeek: (week: number) => Promise<void>;
   reopenWeek: (week: number) => Promise<void>;
   markWinnerPaid: (winnerId: string) => Promise<void>;

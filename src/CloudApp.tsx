@@ -309,7 +309,7 @@ function CloudHome({
       <section className="score-hero">
         <div className="hero-topline">
           <span>Week {scoring.currentWeek}</span>
-          <span className="live-dot">Firebase connected</span>
+          <span className="live-dot">NFL sync active</span>
         </div>
         <p>
           {cloud.ownClaim
@@ -325,14 +325,27 @@ function CloudHome({
             <span>
               {currentAssignment?.isBye
                 ? "Your pool bye"
-                : currentScore?.status === "final"
-                  ? `Final score: ${currentScore.score}`
-                  : cloud.ownClaim
-                    ? "Awaiting final score"
-                    : "No team preview before confirmation"}
+                : currentScore?.status === "live"
+                  ? `Live score: ${currentScore.score ?? 0}`
+                  : currentScore?.status === "final"
+                    ? `Final score: ${currentScore.score}`
+                    : currentScore?.status === "postponed"
+                      ? "Game postponed"
+                      : currentScore?.status === "canceled"
+                        ? "Game canceled"
+                        : currentScore?.status_detail ||
+                          (cloud.ownClaim
+                            ? "Awaiting kickoff"
+                            : "No team preview before confirmation")}
             </span>
           </div>
-          <strong>{currentAssignment?.isBye ? "BYE" : currentScore?.score ?? "33"}</strong>
+          <strong>
+            {currentAssignment?.isBye
+              ? "BYE"
+              : currentScore?.status === "live" || currentScore?.status === "final"
+                ? currentScore.score ?? "—"
+                : "33"}
+          </strong>
         </div>
         <div className="target-row">
           <span>

@@ -1,0 +1,36 @@
+33 POOL SETUP — PACKAGE 8
+Automatic NFL Schedule and Score Synchronization
+
+Adds:
+- ESPN NFL scoreboard connection for the 2026 regular season.
+- Automatic refresh every two minutes while the app is open and visible.
+- Live, final, upcoming, postponed, canceled, and bye statuses.
+- Current scores on the player Weekly Board and Home screen.
+- Commissioner "Sync NFL Scores Now" control.
+- Firestore persistence for synced scores.
+- Manual commissioner score entry remains an override and is never replaced by a later sync.
+- Finalization still requires all playing teams to be final and all 32 numbers claimed.
+- No opponent information is displayed.
+
+No new Firebase rules are required. Existing Package 7 rules already allow
+commissioners to write teamScores and audit records.
+
+This package refreshes automatically while at least one user has the app open.
+A later optional background-runner package can use GitHub Actions when the app
+is closed without requiring Firebase Cloud Functions.
+
+Install into:
+C:\Users\jidaj\Documents\GitHub\33-Pool-Setup
+
+Then run:
+npm run build
+npm run dev
+
+Test before the season:
+1. Sign in as Jimbo.
+2. Open Commissioner.
+3. Open Automatic NFL Scores and Pot Resolution.
+4. Click Sync NFL Scores Now.
+5. Confirm the panel reports the number of Week 1 games and upcoming teams.
+6. Open Weekly Board and confirm the provider update time appears.
+7. Manual draft scores should still work as overrides.

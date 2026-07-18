@@ -74,7 +74,7 @@ export function CloudWeeklyScoringBoard({
           <small>Firebase weekly scoring</small>
           <strong>Week {scoring.selectedWeek}</strong>
           <span>
-            Final scores only · opponent names are not displayed
+            Live NFL scores refresh automatically · opponents are not displayed
           </span>
         </div>
         <div>
@@ -114,6 +114,25 @@ export function CloudWeeklyScoringBoard({
           {rowError || scoring.error}
         </section>
       )}
+
+      <section className="weekly-live-status">
+        <span>
+          {scoring.providerLoading
+            ? "Refreshing NFL scoreboard…"
+            : scoring.providerSummary
+              ? `NFL scoreboard updated ${new Date(
+                  scoring.providerSummary.fetched_at,
+                ).toLocaleTimeString()}`
+              : "NFL scoreboard update pending"}
+        </span>
+        <button
+          disabled={scoring.providerLoading}
+          onClick={() => void scoring.refresh()}
+          type="button"
+        >
+          Refresh
+        </button>
+      </section>
 
       <section className="assignment-list">
         {rows.map((row) => {
@@ -157,12 +176,21 @@ export function CloudWeeklyScoringBoard({
                       {isWinner
                         ? "WINNER"
                         : isCurrentlyAt33
-                          ? "33"
+                          ? "FINAL 33"
                           : "FINAL"}
                     </small>
                   </>
+                ) : score?.status === "live" ? (
+                  <>
+                    <strong>{score.score ?? 0}</strong>
+                    <small>{score.score === 33 ? "AT 33" : "LIVE"}</small>
+                  </>
+                ) : score?.status === "postponed" ? (
+                  <span className="score-exception">POSTPONED</span>
+                ) : score?.status === "canceled" ? (
+                  <span className="score-exception">CANCELED</span>
                 ) : (
-                  <span>{row.player_name ? "—" : "OPEN"}</span>
+                  <span>{row.player_name ? "UPCOMING" : "OPEN"}</span>
                 )}
               </div>
             </article>

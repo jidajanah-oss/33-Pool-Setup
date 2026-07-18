@@ -10,7 +10,9 @@ import {
 } from "firebase/firestore";
 import { NFL_2026_TEAMS } from "../data/nfl2026";
 import { requireFirebaseAuth, requireFirestore } from "../lib/firebase";
+import { fetchEspnNflWeek } from "./nflLiveScoreService";
 import type {
+  CloudNflSyncSummary,
   CloudResolutionPreview,
   CloudResolutionType,
   CloudResolutionWinnerPreview,
@@ -99,6 +101,11 @@ function defaultScoresForWeek(week: number): CloudTeamScore[] {
       team_name: team.name,
       status: isBye ? "bye" : "not_started",
       score: null,
+      source: "unknown",
+      event_id: null,
+      kickoff_at: null,
+      status_detail: isBye ? "Official NFL bye" : "Awaiting NFL schedule sync",
+      synced_at: null,
     };
   });
 }
@@ -113,6 +120,13 @@ function normalizeScores(
   const byCode = new Map(
     storedRows.map((row) => [asString(row.teamCode), row]),
   );
+  const validStatuses = new Set([
+    "not_started",
+    "live",
+    "final",
+    "postponed",
+    "canceled",
+  ]);
 
   return NFL_2026_TEAMS.map((team) => {
     const row = byCode.get(team.code);
@@ -121,17 +135,52 @@ function normalizeScores(
       row && typeof row.score === "number" && Number.isInteger(row.score)
         ? row.score
         : null;
+    const rawStatus = asString(row?.status);
+    const status = isBye
+      ? "bye"
+      : validStatuses.has(rawStatus)
+        ? (rawStatus as CloudTeamScore["status"])
+        : rawScore !== null
+          ? "final"
+          : "not_started";
+    const source =
+      row?.source === "manual" || row?.source === "espn"
+        ? row.source
+        : "unknown";
 
     return {
       team_code: team.code,
       team_name: team.name,
-      status: isBye
-        ? "bye"
-        : row?.status === "final" && rawScore !== null
-          ? "final"
-          : "not_started",
+      status,
       score: isBye ? null : rawScore,
+      source,
+      event_id: typeof row?.eventId === "string" ? row.eventId : null,
+      kickoff_at: typeof row?.kickoffAt === "string" ? row.kickoffAt : null,
+      status_detail: asString(
+        row?.statusDetail,
+        isBye ? "Official NFL bye" : "Awaiting NFL update",
+      ),
+      synced_at: typeof row?.syncedAt === "string" ? row.syncedAt : null,
     };
+  });
+}
+
+export function mergeCloudProviderScores(
+  storedScores: readonly CloudTeamScore[],
+  providerScores: readonly CloudTeamScore[],
+): CloudTeamScore[] {
+  const storedByCode = new Map(
+    storedScores.map((score) => [score.team_code, score]),
+  );
+
+  return providerScores.map((provider) => {
+    const stored = storedByCode.get(provider.team_code);
+
+    if (stored?.source === "manual") {
+      return stored;
+    }
+
+    return provider;
   });
 }
 
@@ -503,6 +552,13 @@ export async function saveCloudTeamScores(
   }
 
   const byCode = new Map(scores.map((score) => [score.team_code, score]));
+  const validStatuses = new Set([
+    "not_started",
+    "live",
+    "final",
+    "postponed",
+    "canceled",
+  ]);
 
   const rows = NFL_2026_TEAMS.map((team) => {
     const input = byCode.get(team.code);
@@ -519,15 +575,31 @@ export async function saveCloudTeamScores(
       );
     }
 
+    const source = input?.source === "espn" ? "espn" : "manual";
+    const requestedStatus = input?.status ?? "not_started";
+    const status = isBye
+      ? "bye"
+      : source === "manual" && typeof rawScore === "number"
+        ? "final"
+        : validStatuses.has(requestedStatus)
+          ? requestedStatus
+          : "not_started";
+
     return {
       teamCode: team.code,
       teamName: team.name,
-      status: isBye
-        ? "bye"
-        : typeof rawScore === "number"
-          ? "final"
-          : "not_started",
-      score: isBye ? null : (rawScore ?? null),
+      status,
+      score:
+        isBye || status === "not_started" || status === "canceled"
+          ? null
+          : (rawScore ?? null),
+      source,
+      eventId: input?.event_id ?? null,
+      kickoffAt: input?.kickoff_at ?? null,
+      statusDetail:
+        input?.status_detail ||
+        (isBye ? "Official NFL bye" : source === "manual" ? "Manual commissioner override" : "NFL update"),
+      syncedAt: input?.synced_at ?? null,
     };
   });
 
@@ -545,6 +617,80 @@ export async function saveCloudTeamScores(
     },
     { merge: false },
   );
+}
+
+export async function fetchNflProviderPreview(
+  week: number,
+): Promise<{
+  scores: CloudTeamScore[];
+  summary: CloudNflSyncSummary;
+}> {
+  normalizeWeek(week);
+  return fetchEspnNflWeek(week);
+}
+
+export async function syncCloudNflScores(
+  week: number,
+): Promise<CloudNflSyncSummary> {
+  await requireCommissioner();
+  normalizeWeek(week);
+  const db = requireFirestore();
+  const [provider, resultSnapshot, currentSnapshot] = await Promise.all([
+    fetchEspnNflWeek(week),
+    getDoc(doc(db, "weeklyResults", String(week))),
+    getDoc(doc(db, "teamScores", String(week))),
+  ]);
+
+  if (resultSnapshot.exists()) {
+    throw new Error(
+      "This week is finalized. Reopen it before syncing NFL scores.",
+    );
+  }
+
+  const stored = currentSnapshot.exists()
+    ? normalizeScores(week, currentSnapshot.data().rows)
+    : defaultScoresForWeek(week);
+  const merged = mergeCloudProviderScores(stored, provider.scores);
+  const user = requireCurrentUser();
+  const now = new Date().toISOString();
+
+  await setDoc(
+    doc(db, "teamScores", String(week)),
+    {
+      week,
+      rows: merged.map((score) => ({
+        teamCode: score.team_code,
+        teamName: score.team_name,
+        status: score.status,
+        score: score.score,
+        source: score.source,
+        eventId: score.event_id,
+        kickoffAt: score.kickoff_at,
+        statusDetail: score.status_detail,
+        syncedAt: score.synced_at,
+      })),
+      finalized: false,
+      provider: provider.summary.provider,
+      providerSummary: provider.summary,
+      lastSyncedAt: provider.summary.fetched_at,
+      updatedAt: now,
+      updatedByUid: user.uid,
+    },
+    { merge: false },
+  );
+
+  await setDoc(doc(collection(db, "audit")), {
+    actionType: "nfl_scores_synced",
+    week,
+    provider: provider.summary.provider,
+    eventCount: provider.summary.event_count,
+    finalTeamCount: provider.summary.final_team_count,
+    liveTeamCount: provider.summary.live_team_count,
+    commissionerUid: user.uid,
+    createdAt: now,
+  });
+
+  return provider.summary;
 }
 
 async function commissionerName(uid: string): Promise<string> {
@@ -790,6 +936,11 @@ export async function finalizeCloudWeek(week: number): Promise<void> {
           teamName: score.team_name,
           status: score.status,
           score: score.score,
+          source: score.source,
+          eventId: score.event_id,
+          kickoffAt: score.kickoff_at,
+          statusDetail: score.status_detail,
+          syncedAt: score.synced_at,
         })),
         finalized: true,
         finalizedAt: now,

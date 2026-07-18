@@ -87,6 +87,14 @@ export function CloudScoringPanel({
                 nextScore !== null && Number.isFinite(nextScore)
                   ? "final"
                   : "not_started",
+              source: "manual",
+              event_id: null,
+              kickoff_at: row.kickoff_at,
+              status_detail:
+                nextScore !== null && Number.isFinite(nextScore)
+                  ? "Manual commissioner override"
+                  : "Manual score cleared",
+              synced_at: new Date().toISOString(),
             }
           : row,
       ),
@@ -114,6 +122,18 @@ export function CloudScoringPanel({
       setBusy(false);
     }
   };
+
+  const syncScores = () =>
+    run(
+      async () => {
+        const summary = await scoring.syncFromProvider(
+          scoring.selectedWeek,
+        );
+        setDraftScores(scoring.scores);
+        return void summary;
+      },
+      `Week ${scoring.selectedWeek} NFL schedule and scores synced.`,
+    );
 
   const save = () =>
     run(
@@ -163,11 +183,11 @@ export function CloudScoringPanel({
     <section className="section-card cloud-scoring-panel">
       <div className="generator-heading">
         <div>
-          <p className="eyebrow">Package 7</p>
-          <h2>NFL Final Scores and Pot Resolution</h2>
+          <p className="eyebrow">Package 8</p>
+          <h2>Automatic NFL Scores and Pot Resolution</h2>
           <p>
-            Enter each team&apos;s final score. Teams on their official
-            NFL bye are disabled automatically.
+            Live schedule and scores refresh automatically while the app is open.
+            Manual commissioner entry remains available as an override.
           </p>
         </div>
         <span
@@ -179,6 +199,44 @@ export function CloudScoringPanel({
             ? `Week ${scoring.selectedWeek} finalized`
             : `Week ${scoring.selectedWeek} draft`}
         </span>
+      </div>
+
+      <div className="nfl-sync-card">
+        <div>
+          <small>NFL scoreboard connection</small>
+          <strong>
+            {scoring.providerLoading
+              ? "Refreshing…"
+              : scoring.providerSummary
+                ? "Connected"
+                : "Waiting for first refresh"}
+          </strong>
+          <span>
+            Automatic refresh every 2 minutes while this app is open.
+          </span>
+        </div>
+        <div className="nfl-sync-counts">
+          <span>{scoring.providerSummary?.event_count ?? 0} games</span>
+          <span>{scoring.providerSummary?.live_team_count ?? 0} live teams</span>
+          <span>{scoring.providerSummary?.final_team_count ?? 0} final teams</span>
+        </div>
+        <button
+          disabled={busy || scoring.providerLoading || Boolean(scoring.result)}
+          onClick={() => void syncScores()}
+          type="button"
+        >
+          Sync NFL Scores Now
+        </button>
+        {scoring.providerSummary && (
+          <small className="nfl-sync-time">
+            Last update: {new Date(scoring.providerSummary.fetched_at).toLocaleString()}
+          </small>
+        )}
+        {scoring.providerError && (
+          <div className="generator-message error">
+            {scoring.providerError} Manual entry remains available.
+          </div>
+        )}
       </div>
 
       <div className="week-selector scoring-week-selector">
@@ -219,7 +277,19 @@ export function CloudScoringPanel({
                 <div>
                   <strong>{team.name}</strong>
                   <small>
-                    {isBye ? "Official NFL bye" : "Final score"}
+                    {isBye
+                      ? "Official NFL bye"
+                      : row?.source === "manual"
+                        ? "Manual commissioner override"
+                        : row?.status === "live"
+                          ? `LIVE · ${row.status_detail}`
+                          : row?.status === "final"
+                            ? "Final NFL score"
+                            : row?.status === "postponed"
+                              ? `Postponed · ${row.status_detail}`
+                              : row?.status === "canceled"
+                                ? "Canceled"
+                                : row?.status_detail || "Scheduled"}
                   </small>
                 </div>
               </div>

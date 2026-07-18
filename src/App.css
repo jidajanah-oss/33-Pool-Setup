@@ -2967,4 +2967,123 @@ small,
   .cloud-score-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}/* Package 8 — automatic NFL schedule and score synchronization */
+.nfl-sync-card {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--blue-200);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f7fbff, #edf4fa);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 18px;
+}
+
+.nfl-sync-card small,
+.nfl-sync-card strong,
+.nfl-sync-card span {
+  display: block;
+}
+
+.nfl-sync-card > div:first-child > small,
+.nfl-sync-time {
+  color: var(--muted);
+}
+
+.nfl-sync-card > div:first-child > strong {
+  margin-top: 3px;
+  color: var(--navy-900);
+  font-size: 1.2rem;
+}
+
+.nfl-sync-card > div:first-child > span {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.nfl-sync-counts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.nfl-sync-counts span {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: white;
+  color: var(--navy-900);
+  font-weight: 800;
+}
+
+.nfl-sync-card > button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 13px;
+  padding: 0 16px;
+  background: var(--navy-900);
+  color: white;
+  font-weight: 900;
+}
+
+.nfl-sync-time {
+  text-align: right;
+}
+
+.nfl-sync-card .generator-message {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.cloud-score-card small {
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.weekly-live-status {
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.weekly-live-status button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 13px;
+  background: var(--ice-100);
+  color: var(--navy-900);
+  font-weight: 900;
+}
+
+.score-exception {
+  color: var(--danger);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+@media (max-width: 700px) {
+  .nfl-sync-card {
+    grid-template-columns: 1fr;
+  }
+
+  .nfl-sync-counts {
+    justify-content: flex-start;
+  }
+
+  .nfl-sync-card > button {
+    width: 100%;
+  }
+
+  .nfl-sync-time {
+    text-align: left;
+  }
 }
