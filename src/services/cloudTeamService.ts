@@ -14,6 +14,7 @@ import {
 } from "../lib/firebase";
 import {
   getCloudRoleForUid,
+  PRIMARY_COMMISSIONER_UID,
   requireCloudCommissioner,
   requireCloudPrimary,
 } from "./cloudRoleService";
@@ -118,14 +119,12 @@ export async function fetchCloudCommissionerTeam(): Promise<{
     adminSnapshots,
     inviteSnapshots,
     currentUserSnapshot,
-    currentAdminSnapshot,
     teamSnapshot,
   ] = await Promise.all([
     getDocsFromServer(collection(db, "users")),
     getDocsFromServer(collection(db, "admins")),
     getDocsFromServer(collection(db, "invites")),
     getDoc(doc(db, "users", currentUser.uid)),
-    getDoc(doc(db, "admins", currentUser.uid)),
     getDoc(doc(db, "commissionerTeam", "main")),
   ]);
 
@@ -143,7 +142,6 @@ export async function fetchCloudCommissionerTeam(): Promise<{
   const users: CloudDirectoryUser[] = userSnapshots.docs
     .map((snapshot) => {
       const data = snapshot.data() as StoredUser;
-      const admin = adminsByUid.get(snapshot.id);
       const teamData = teamSnapshot.exists()
         ? teamSnapshot.data()
         : {};
@@ -151,7 +149,7 @@ export async function fetchCloudCommissionerTeam(): Promise<{
         asString(teamData.backup1Uid) === snapshot.id ||
         asString(teamData.backup2Uid) === snapshot.id;
       const role: CloudRole =
-        admin?.role === "primary_commissioner"
+        snapshot.id === PRIMARY_COMMISSIONER_UID
           ? "primary_commissioner"
           : isBackup
             ? "co_commissioner"
@@ -168,58 +166,27 @@ export async function fetchCloudCommissionerTeam(): Promise<{
       a.display_name.localeCompare(b.display_name),
     );
 
-  /*
-   * Prefer an explicitly marked Primary Commissioner. Older manually-created
-   * admin records are also accepted when they are not backup records.
-   */
-  const primaryEntry = [...adminsByUid.entries()].find(
-    ([, data]) =>
-      data.role === "primary_commissioner" ||
-      (data.role !== "co_commissioner" && !asString(data.slot)),
+  const primaryUser =
+    usersByUid.get(PRIMARY_COMMISSIONER_UID) ??
+    (currentUser.uid === PRIMARY_COMMISSIONER_UID &&
+    currentUserSnapshot.exists()
+      ? (currentUserSnapshot.data() as StoredUser)
+      : undefined);
+
+  const primaryAdmin = adminsByUid.get(
+    PRIMARY_COMMISSIONER_UID,
   );
 
-  let primary = primaryEntry
-    ? mapMember(
-        primaryEntry[0],
-        usersByUid.get(primaryEntry[0]),
-        primaryEntry[1],
-        "primary",
-      )
-    : null;
-
-  /*
-   * Jimbo's authenticated admin document is authoritative. If the collection
-   * result does not include it, use the directly-read record so the Primary
-   * card and backup-assignment controls still work.
-   */
-  if (
-    !primary &&
-    currentRole === "primary_commissioner" &&
-    currentAdminSnapshot.exists()
-  ) {
-    const currentAdmin =
-      currentAdminSnapshot.data() as StoredAdmin;
-    const currentUserData: StoredUser = currentUserSnapshot.exists()
-      ? (currentUserSnapshot.data() as StoredUser)
-      : {
-          uid: currentUser.uid,
-          displayName:
-            asString(currentAdmin.displayName) ||
-            currentUser.displayName ||
-            "Primary Commissioner",
-          email:
-            asString(currentAdmin.email) ||
-            currentUser.email ||
-            "",
-        };
-
-    primary = mapMember(
-      currentUser.uid,
-      currentUserData,
-      currentAdmin,
-      "primary",
-    );
-  }
+  const primary: CloudCommissionerMember = mapMember(
+    PRIMARY_COMMISSIONER_UID,
+    primaryUser ?? {
+      uid: PRIMARY_COMMISSIONER_UID,
+      displayName: "Jimbo",
+      email: "jidajanah@gmail.com",
+    },
+    primaryAdmin,
+    "primary",
+  );
 
   const backups: Record<
     CloudCommissionerSlotId,

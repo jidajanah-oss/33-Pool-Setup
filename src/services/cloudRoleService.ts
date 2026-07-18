@@ -2,9 +2,8 @@ import { doc, getDoc } from "firebase/firestore";
 import { requireFirebaseAuth, requireFirestore } from "../lib/firebase";
 import type { CloudRole } from "../types/cloud";
 
-interface StoredAdmin {
-  role?: unknown;
-}
+export const PRIMARY_COMMISSIONER_UID =
+  "jytf6FyhvoSnMEOsaV6OyWPNXfv2";
 
 interface StoredCommissionerTeam {
   backup1Uid?: unknown;
@@ -18,20 +17,14 @@ function asString(value: unknown): string {
 export async function getCloudRoleForUid(
   uid: string,
 ): Promise<CloudRole> {
-  const db = requireFirestore();
-
-  const [adminSnapshot, teamSnapshot] = await Promise.all([
-    getDoc(doc(db, "admins", uid)),
-    getDoc(doc(db, "commissionerTeam", "main")),
-  ]);
-
-  if (
-    adminSnapshot.exists() &&
-    (adminSnapshot.data() as StoredAdmin).role ===
-      "primary_commissioner"
-  ) {
+  if (uid === PRIMARY_COMMISSIONER_UID) {
     return "primary_commissioner";
   }
+
+  const db = requireFirestore();
+  const teamSnapshot = await getDoc(
+    doc(db, "commissionerTeam", "main"),
+  );
 
   if (teamSnapshot.exists()) {
     const team = teamSnapshot.data() as StoredCommissionerTeam;

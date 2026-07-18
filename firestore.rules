@@ -13,12 +13,7 @@ service cloud.firestore {
 
     function isPrimary() {
       return signedIn()
-        && exists(
-          /databases/$(database)/documents/admins/$(request.auth.uid)
-        )
-        && get(
-          /databases/$(database)/documents/admins/$(request.auth.uid)
-        ).data.role == 'primary_commissioner';
+        && request.auth.uid == 'jytf6FyhvoSnMEOsaV6OyWPNXfv2';
     }
 
     function isCommissioner() {
