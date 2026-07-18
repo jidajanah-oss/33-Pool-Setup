@@ -30,6 +30,7 @@ const nav: Array<{ id: AppScreen; label: string }> = [
   { id: "payments", label: "Payments" },
   { id: "rules", label: "Rules" },
   { id: "commissioner", label: "Commissioner" },
+  { id: "more", label: "More" },
 ];
 
 interface BeforeInstallPromptEvent extends Event {
@@ -38,6 +39,33 @@ interface BeforeInstallPromptEvent extends Event {
     outcome: "accepted" | "dismissed";
     platform: string;
   }>;
+}
+
+function cloudRoleLabel(role: string | undefined): string {
+  if (role === "primary_commissioner") {
+    return "Primary Commissioner";
+  }
+
+  if (role === "co_commissioner") {
+    return "Backup Commissioner";
+  }
+
+  return "Player";
+}
+
+function profileSubtitle(
+  role: string | undefined,
+  scheduleNumber: number | undefined,
+): string {
+  const roleLabel = cloudRoleLabel(role);
+
+  if (role === "primary_commissioner" || role === "co_commissioner") {
+    return scheduleNumber
+      ? `${roleLabel} · Schedule #${scheduleNumber}`
+      : roleLabel;
+  }
+
+  return scheduleNumber ? `Schedule #${scheduleNumber}` : roleLabel;
 }
 
 export default function CloudApp() {
@@ -177,6 +205,23 @@ export default function CloudApp() {
                 }}
               />
             </div>
+            <div className="sidebar-account-summary">
+              <small>Signed in as</small>
+              <strong>{auth.profile?.display_name}</strong>
+              <span>
+                {profileSubtitle(
+                  auth.profile?.role,
+                  cloud.ownClaim?.schedule_number,
+                )}
+              </span>
+            </div>
+            <button
+              className="sidebar-signout-button"
+              onClick={() => void auth.signOut()}
+              type="button"
+            >
+              Sign Out
+            </button>
           </div>
         </aside>
 
@@ -212,9 +257,10 @@ export default function CloudApp() {
               <div>
                 <strong>{auth.profile?.display_name}</strong>
                 <small>
-                  {cloud.ownClaim
-                    ? `Schedule #${cloud.ownClaim.schedule_number}`
-                    : auth.profile?.role.replaceAll("_", " ")}
+                  {profileSubtitle(
+                    auth.profile?.role,
+                    cloud.ownClaim?.schedule_number,
+                  )}
                 </small>
               </div>
             </div>
@@ -618,9 +664,10 @@ function CloudMore({
         <div>
           <strong>{auth.profile?.display_name}</strong>
           <span>
-            {cloud.ownClaim
-              ? `Schedule #${cloud.ownClaim.schedule_number}`
-              : auth.profile?.role.replaceAll("_", " ")}
+            {profileSubtitle(
+              auth.profile?.role,
+              cloud.ownClaim?.schedule_number,
+            )}
           </span>
         </div>
       </section>

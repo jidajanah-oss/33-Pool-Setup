@@ -12,6 +12,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   query,
   setDoc,
   updateDoc,
@@ -227,6 +228,62 @@ export function useCloudAuth(): CloudAuthController {
 
   const refreshProfile = useCallback(async () => {
     await loadProfile(user);
+  }, [loadProfile, user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const firestore = requireFirestore();
+    let active = true;
+    let refreshQueued = false;
+
+    const refreshCurrentProfile = () => {
+      if (!active || refreshQueued) {
+        return;
+      }
+
+      refreshQueued = true;
+
+      window.setTimeout(() => {
+        refreshQueued = false;
+
+        if (active) {
+          void loadProfile(user);
+        }
+      }, 0);
+    };
+
+    const unsubscribeAdmin = onSnapshot(
+      doc(firestore, "admins", user.uid),
+      refreshCurrentProfile,
+      () => refreshCurrentProfile(),
+    );
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        refreshCurrentProfile();
+      }
+    };
+
+    window.addEventListener("focus", refreshCurrentProfile);
+    window.addEventListener("pageshow", refreshCurrentProfile);
+    document.addEventListener(
+      "visibilitychange",
+      refreshWhenVisible,
+    );
+
+    return () => {
+      active = false;
+      unsubscribeAdmin();
+      window.removeEventListener("focus", refreshCurrentProfile);
+      window.removeEventListener("pageshow", refreshCurrentProfile);
+      document.removeEventListener(
+        "visibilitychange",
+        refreshWhenVisible,
+      );
+    };
   }, [loadProfile, user]);
 
   useEffect(() => {

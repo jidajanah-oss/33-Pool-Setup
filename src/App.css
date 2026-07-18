@@ -3371,3 +3371,44 @@ small,
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* Package 10.1 — live commissioner role refresh and desktop sign-out */
+.sidebar-account-summary {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sidebar-account-summary small,
+.sidebar-account-summary strong,
+.sidebar-account-summary span {
+  display: block;
+}
+
+.sidebar-account-summary strong {
+  margin-top: 4px;
+  color: white;
+  font-size: 0.95rem;
+}
+
+.sidebar-account-summary span {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.sidebar-signout-button {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-weight: 900;
+}
+
+.sidebar-signout-button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
