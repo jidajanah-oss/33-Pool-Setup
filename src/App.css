@@ -3412,3 +3412,244 @@ small,
 .sidebar-signout-button:hover {
   background: rgba(255, 255, 255, 0.14);
 }
+
+/* Package 10.11 — Commissioner phone layout */
+.app-content {
+  box-sizing: border-box;
+}
+
+@media (max-width: 899px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .app-shell,
+  .app-stage,
+  .app-content,
+  .commissioner-screen {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .app-content {
+    margin: 0;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .commissioner-screen > *,
+  .commissioner-screen .section-card,
+  .commissioner-screen .schedule-generator-panel,
+  .commissioner-screen .cloud-commissioner-card,
+  .commissioner-screen .cloud-team-panel,
+  .commissioner-screen .cloud-payment-ledger,
+  .commissioner-screen .cloud-scoring-panel,
+  .commissioner-screen .claim-manager {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .commissioner-screen *,
+  .commissioner-screen *::before,
+  .commissioner-screen *::after {
+    box-sizing: border-box;
+  }
+
+  .commissioner-screen .generator-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+  }
+
+  .commissioner-screen .generator-heading > *,
+  .commissioner-screen .generator-heading > div,
+  .commissioner-screen .section-heading,
+  .commissioner-screen .invite-list-heading > div,
+  .commissioner-screen .cloud-invite-list article > div,
+  .commissioner-screen .commissioner-role-card,
+  .commissioner-screen .cloud-status-grid > div,
+  .commissioner-screen .validation-card,
+  .commissioner-screen .payment-entry-panel,
+  .commissioner-screen .scoring-preview-card,
+  .commissioner-screen .nfl-sync-card > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .commissioner-screen .generator-heading h2,
+  .commissioner-screen .generator-heading p,
+  .commissioner-screen .generator-note,
+  .commissioner-screen .generator-message,
+  .commissioner-screen .generator-source-note,
+  .commissioner-screen .commissioner-role-card span,
+  .commissioner-screen .commissioner-role-card strong,
+  .commissioner-screen .cloud-status-grid strong,
+  .commissioner-screen .cloud-status-grid small,
+  .commissioner-screen .cloud-claim-list strong,
+  .commissioner-screen .cloud-claim-list small,
+  .commissioner-screen .cloud-invite-list span,
+  .commissioner-screen .cloud-invite-list small,
+  .commissioner-screen .payment-account-card strong,
+  .commissioner-screen .payment-account-card span,
+  .commissioner-screen .nfl-sync-card span {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .commissioner-screen .generator-status {
+    max-width: 100%;
+    justify-self: start;
+    white-space: normal;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .commissioner-screen input,
+  .commissioner-screen select,
+  .commissioner-screen textarea,
+  .commissioner-screen button {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .commissioner-screen select {
+    text-overflow: ellipsis;
+  }
+
+  .commissioner-screen .cloud-control-grid,
+  .commissioner-screen .generator-action-grid,
+  .commissioner-screen .invite-form-grid,
+  .commissioner-screen .commissioner-team-grid,
+  .commissioner-screen .payment-entry-grid,
+  .commissioner-screen .cloud-score-grid,
+  .commissioner-screen .cloud-score-actions,
+  .commissioner-screen .nfl-sync-card {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .commissioner-screen .cloud-control-grid button,
+  .commissioner-screen .generator-action-grid button,
+  .commissioner-screen .generator-footer-actions button,
+  .commissioner-screen .invite-form-grid button,
+  .commissioner-screen .cloud-score-actions button,
+  .commissioner-screen .nfl-sync-card > button {
+    width: 100%;
+    min-height: 48px;
+    height: auto;
+    padding-top: 11px;
+    padding-bottom: 11px;
+    white-space: normal;
+    line-height: 1.25;
+  }
+
+  .commissioner-screen .cloud-status-grid,
+  .commissioner-screen .cloud-payment-summary,
+  .commissioner-screen .validation-grid,
+  .commissioner-screen .scoring-preview-money {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .commissioner-screen .bye-week-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .commissioner-screen .cloud-claim-list,
+  .commissioner-screen .commissioner-claim-grid,
+  .commissioner-screen .payment-account-grid,
+  .commissioner-screen .generated-line-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .commissioner-screen .cloud-claim-list article,
+  .commissioner-screen .commissioner-claim,
+  .commissioner-screen .payment-account-card,
+  .commissioner-screen .cloud-score-card,
+  .commissioner-screen .weekly-live-status,
+  .commissioner-screen .cloud-invite-list article {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .commissioner-screen .line-preview-heading,
+  .commissioner-screen .payment-history-heading,
+  .commissioner-screen .payment-ledger-toolbar,
+  .commissioner-screen .invite-list-heading {
+    max-width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 620px) {
+  .commissioner-screen .section-card,
+  .commissioner-screen .schedule-generator-panel {
+    padding: 14px;
+    border-radius: 17px;
+  }
+
+  .commissioner-screen .cloud-status-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .commissioner-screen .commissioner-role-card {
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .commissioner-screen .commissioner-slot-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .commissioner-screen .cloud-claim-list article,
+  .commissioner-screen .commissioner-claim,
+  .commissioner-screen .payment-account-card,
+  .commissioner-screen .weekly-live-status {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .commissioner-screen .cloud-claim-list button,
+  .commissioner-screen .commissioner-claim button,
+  .commissioner-screen .payment-history-heading button,
+  .commissioner-screen .payment-ledger-toolbar button,
+  .commissioner-screen .invite-list-heading button {
+    width: 100%;
+  }
+
+  .commissioner-screen .payment-account-card > div:last-child,
+  .commissioner-screen .nfl-sync-time {
+    text-align: left;
+  }
+
+  .commissioner-screen .cloud-score-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .commissioner-screen .cloud-score-card input {
+    width: 100%;
+  }
+
+  .commissioner-screen .line-preview-heading,
+  .commissioner-screen .payment-history-heading,
+  .commissioner-screen .payment-ledger-toolbar,
+  .commissioner-screen .invite-list-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .commissioner-screen .line-preview-heading select {
+    width: 100%;
+    max-width: none;
+  }
+}

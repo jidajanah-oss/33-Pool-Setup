@@ -1,4 +1,4 @@
-const CACHE_NAME = "33-pool-production-v19";
+const CACHE_NAME = "33-pool-production-v20";
 const APP_ROOT = new URL("./", self.location).href;
 const APP_SHELL = [
   APP_ROOT,

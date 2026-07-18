@@ -316,7 +316,7 @@ export default function CloudApp() {
             {screen === "rules" && <CloudRules />}
             {screen === "commissioner" &&
               canOpenCommissioner && (
-                <div className="screen-stack">
+                <div className="screen-stack commissioner-screen">
                   <CloudCommissionerPanel
                     auth={auth}
                     cloud={cloud}
