@@ -1,0 +1,14 @@
+33 POOL SETUP — PACKAGE 5F INSTALLATION
+
+1. Copy the package files into the standalone 33-Pool-Setup project.
+2. Remove the unfinished Supabase client files and migration folder.
+3. Install the Firebase web SDK.
+4. Create .env.local with the registered 33 Pool Setup web-app configuration.
+5. Run the production build.
+6. Start localhost and test passwordless email-link sign-in.
+
+The package has passed:
+  npm run build
+
+The Firebase JavaScript bundle may produce a Vite large-chunk warning.
+That warning does not fail the build and can be optimized later.

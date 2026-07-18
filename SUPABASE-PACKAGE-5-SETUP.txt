@@ -1,0 +1,45 @@
+33 POOL SETUP — PACKAGE 5
+Standalone Supabase Cloud Foundation
+
+IMPORTANT
+Create a completely new Supabase project for 33 Pool Setup.
+Do not use Head2Head Brawlin, Terry's Survivor, or any other Supabase project.
+
+PACKAGE INSTALL
+1. Copy this package into C:\Users\jidaj\Documents\GitHub\33-Pool-Setup
+2. Run: npm install @supabase/supabase-js
+3. Run: npm run build
+
+SUPABASE SETUP
+1. Create a new Supabase project named 33 Pool Setup.
+2. Open SQL Editor.
+3. Run supabase/migrations/202607180001_cloud_auth_and_atomic_claims.sql
+4. Open Project Settings / API (or the Connect dialog).
+5. Copy the Project URL and Publishable key.
+6. Create .env in the project root from .env.example.
+7. Enter:
+   VITE_SUPABASE_URL=...
+   VITE_SUPABASE_PUBLISHABLE_KEY=...
+
+AUTH URL CONFIGURATION
+For local testing add:
+  http://localhost:5173/33-Pool-Setup/
+For the later GitHub Pages deployment add:
+  https://jidajanah-oss.github.io/33-Pool-Setup/
+
+FIRST CLOUD TEST
+1. Restart npm run dev after creating .env.
+2. Sign in with your email magic link.
+3. Open More > Commissioner.
+4. Select Claim Primary Commissioner. Only the first account can do this.
+5. Generate, validate, and lock the 32 schedules locally.
+6. In Cloud Season Controls select Publish Locked Schedule.
+7. Sign in with a second email and choose an available number.
+8. Confirm that the team schedule was hidden before confirmation and revealed afterward.
+
+SECURITY
+- Browser uses only the Supabase publishable key.
+- Never place the service_role key in .env or source code.
+- Atomic number claims run in PostgreSQL.
+- Row Level Security protects full schedules.
+- One authenticated account can claim only one line.

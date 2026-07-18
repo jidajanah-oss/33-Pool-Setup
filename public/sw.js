@@ -1,4 +1,4 @@
-const CACHE_NAME = "33-pool-shell-v5";
+const CACHE_NAME = "33-pool-firebase-shell-v1";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

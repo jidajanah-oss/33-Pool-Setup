@@ -1,0 +1,18 @@
+33 POOL SETUP — PACKAGE 5
+Supabase Cloud Authentication + Atomic Number Claims
+
+Adds:
+- Separate Supabase client configuration.
+- Email magic-link authentication.
+- Cloud player profiles and protected roles.
+- First-user Primary Commissioner bootstrap.
+- Secure cloud publishing of the locked anonymous schedule.
+- Atomic schedule-number claims.
+- Database-enforced one-account/one-number protection.
+- Player names on claimed number slots.
+- Private full-season schedule visibility.
+- Current-week board RPC with future-team privacy.
+- Commissioner enrollment toggle and claim release controls.
+- Local mode remains available until .env is configured.
+
+Read SUPABASE-PACKAGE-5-SETUP.txt before cloud testing.

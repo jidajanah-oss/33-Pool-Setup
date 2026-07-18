@@ -1044,4 +1044,10 @@ function MoreButton({
   );
 }
 
+// Retained local demonstration components are explicitly referenced so the
+// strict TypeScript production build recognizes them as intentional.
+void NumberBoardScreen;
+void MyScheduleScreen;
+void WeeklyBoardScreen;
+
 export default App;

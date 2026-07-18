@@ -1,0 +1,47 @@
+33 POOL SETUP — PACKAGE 5F
+Firebase Authentication + Firestore Cloud Foundation
+
+This package replaces the unfinished Supabase cloud layer with Firebase.
+
+Included:
+- Firebase web initialization through Vite environment variables
+- Passwordless Firebase email-link sign-in
+- Authenticated player profiles
+- Firestore pool status
+- Secure blind number selection
+- Atomic two-document number claims
+- Private player schedules
+- Week 1 public assignment publishing
+- Commissioner schedule publishing
+- Commissioner enrollment controls
+- Commissioner claim release
+- Firestore rules source copy
+- Supabase cloud code no longer used
+
+Firebase collections used:
+- admins
+- users
+- poolConfig
+- claims
+- userClaims
+- privateSchedules
+- weeklyPublic
+- winners
+- payments
+- audit
+
+Primary Commissioner:
+The first commissioner is NOT self-promoted by the browser.
+After the commissioner signs in once, create:
+  Collection: admins
+  Document ID: the commissioner's Firebase Authentication UID
+  Fields:
+    role = primary_commissioner
+    displayName = the commissioner's name
+    email = the commissioner's email
+    createdAt = current date/time text
+
+Then sign out and sign back in so the app reloads the commissioner role.
+
+The current published Firestore rules are also stored in firestore.rules.
+Do not create or download an Admin SDK service-account private key.

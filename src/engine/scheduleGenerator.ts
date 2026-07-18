@@ -115,7 +115,7 @@ function findDistinctByeLayouts(random: RandomFn): {
 
 function buildSchedule(seed: string): GeneratedScheduleLine[] {
   const random = randomFromSeed(seed);
-  const { rowOrder, symbolOrder, shiftByWeek } = findDistinctByeLayouts(random);
+  const { symbolOrder, shiftByWeek } = findDistinctByeLayouts(random);
   const symbolStarts = startsByWeek(symbolOrder);
   const teamAtSymbol = new Array<NflTeam>(LINE_COUNT);
 
