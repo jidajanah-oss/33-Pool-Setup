@@ -303,7 +303,9 @@ export default function CloudApp() {
               onClick={() => setScreen("schedule")}
               type="button"
             >
-              <span className="cloud-tab-icon">18</span>
+              <span className="cloud-tab-icon">
+                {cloud.ownClaim?.schedule_number ?? "#"}
+              </span>
               <span>My Line</span>
             </button>
             <button
