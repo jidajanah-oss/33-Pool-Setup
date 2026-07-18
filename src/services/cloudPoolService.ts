@@ -10,7 +10,10 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { requireFirebaseAuth, requireFirestore } from "../lib/firebase";
-import { getCloudRoleForUid } from "./cloudRoleService";
+import {
+  getCloudRoleForUid,
+  requireCloudPrimary,
+} from "./cloudRoleService";
 import type {
   CloudClaim,
   CloudNumberSlot,
@@ -37,6 +40,14 @@ interface PublicWeekRow {
   teamCode: string;
   teamName: string;
   isBye: boolean;
+}
+
+export interface CloudPullResetResult {
+  archive_id: string;
+  new_schedule_id: string;
+  previous_schedule_id: string | null;
+  previous_claim_count: number;
+  reset_at: string;
 }
 
 function requireUserId(): string {
@@ -546,3 +557,271 @@ export async function releaseCloudNumber(
   batch.delete(doc(db, "userClaims", uid));
   await batch.commit();
 }
+
+export async function resetCloud2026Pull(
+  schedule: GeneratedScheduleSet,
+  confirmation: string,
+): Promise<CloudPullResetResult> {
+  await requireCloudPrimary();
+
+  if (confirmation.trim() !== "RESET 2026") {
+    throw new Error('Type "RESET 2026" exactly to confirm the new pull.');
+  }
+
+  if (
+    schedule.season !== 2026 ||
+    !schedule.lockedAt ||
+    !schedule.validation.isValid ||
+    schedule.lines.length !== 32
+  ) {
+    throw new Error(
+      "The replacement schedule must be a complete, validated, locked 2026 schedule.",
+    );
+  }
+
+  const db = requireFirestore();
+  const auth = requireFirebaseAuth();
+  const user = auth.currentUser;
+
+  if (!user) {
+    throw new Error("Sign in to Firebase first.");
+  }
+
+  const [
+    configSnapshot,
+    privateScheduleSnapshots,
+    claimSnapshots,
+    userClaimSnapshots,
+    weeklyPublicSnapshots,
+    teamScoreSnapshots,
+    weeklyResultSnapshots,
+    winnerSnapshots,
+  ] = await Promise.all([
+    getDoc(doc(db, "poolConfig", "main")),
+    getDocs(collection(db, "privateSchedules")),
+    getDocs(collection(db, "claims")),
+    getDocs(collection(db, "userClaims")),
+    getDocs(collection(db, "weeklyPublic")),
+    getDocs(collection(db, "teamScores")),
+    getDocs(collection(db, "weeklyResults")),
+    getDocs(collection(db, "winners")),
+  ]);
+
+  if (!configSnapshot.exists()) {
+    throw new Error("The active 2026 pool configuration is missing.");
+  }
+
+  const config = configSnapshot.data();
+  const activeSeason =
+    typeof config.season === "number" ? config.season : 2026;
+  const currentWeek =
+    typeof config.currentWeek === "number" ? config.currentWeek : 1;
+
+  if (activeSeason !== 2026) {
+    throw new Error("Only the active 2026 pull can be reset here.");
+  }
+
+  if (currentWeek !== 1) {
+    throw new Error(
+      "The 2026 pull can be reset only while the pool is still on Week 1.",
+    );
+  }
+
+  if (!weeklyResultSnapshots.empty || !winnerSnapshots.empty) {
+    throw new Error(
+      "A week has already been finalized. The 2026 pull can no longer be reset.",
+    );
+  }
+
+  const resetAt = new Date().toISOString();
+  const archiveId = `pull-2026-${resetAt
+    .replaceAll(":", "")
+    .replaceAll(".", "-")}`;
+  const previousScheduleId =
+    typeof config.scheduleId === "string" ? config.scheduleId : null;
+  const batch = writeBatch(db);
+  let operationCount = 0;
+
+  const set = (
+    reference: Parameters<typeof batch.set>[0],
+    value: Record<string, unknown>,
+  ) => {
+    batch.set(reference, value);
+    operationCount += 1;
+  };
+
+  const remove = (reference: Parameters<typeof batch.delete>[0]) => {
+    batch.delete(reference);
+    operationCount += 1;
+  };
+
+  set(doc(db, "pullArchives", archiveId), {
+    season: 2026,
+    archiveType: "preseason_pull_reset",
+    archivedAt: resetAt,
+    archivedByUid: user.uid,
+    archivedByEmail: user.email ?? "",
+    previousScheduleId,
+    previousClaimCount: claimSnapshots.size,
+    newScheduleId: schedule.id,
+    preservedCollections: [
+      "users",
+      "invites",
+      "commissionerTeam",
+      "payments",
+      "paymentTransactions",
+    ],
+  });
+
+  set(
+    doc(db, "pullArchives", archiveId, "state", "poolConfig"),
+    config,
+  );
+
+  privateScheduleSnapshots.forEach((snapshot) => {
+    set(
+      doc(
+        db,
+        "pullArchives",
+        archiveId,
+        "privateSchedules",
+        snapshot.id,
+      ),
+      snapshot.data(),
+    );
+
+    const lineNumber = Number(snapshot.id);
+
+    if (
+      !Number.isInteger(lineNumber) ||
+      lineNumber < 1 ||
+      lineNumber > 32
+    ) {
+      remove(doc(db, "privateSchedules", snapshot.id));
+    }
+  });
+
+  claimSnapshots.forEach((snapshot) => {
+    set(
+      doc(db, "pullArchives", archiveId, "claims", snapshot.id),
+      snapshot.data(),
+    );
+    remove(doc(db, "claims", snapshot.id));
+  });
+
+  userClaimSnapshots.forEach((snapshot) => {
+    set(
+      doc(db, "pullArchives", archiveId, "userClaims", snapshot.id),
+      snapshot.data(),
+    );
+    remove(doc(db, "userClaims", snapshot.id));
+  });
+
+  weeklyPublicSnapshots.forEach((snapshot) => {
+    set(
+      doc(
+        db,
+        "pullArchives",
+        archiveId,
+        "weeklyPublic",
+        snapshot.id,
+      ),
+      snapshot.data(),
+    );
+
+    if (snapshot.id !== "1") {
+      remove(doc(db, "weeklyPublic", snapshot.id));
+    }
+  });
+
+  teamScoreSnapshots.forEach((snapshot) => {
+    set(
+      doc(db, "pullArchives", archiveId, "teamScores", snapshot.id),
+      snapshot.data(),
+    );
+    remove(doc(db, "teamScores", snapshot.id));
+  });
+
+  schedule.lines.forEach((line) => {
+    const storedLine: StoredScheduleLine = {
+      lineNumber: line.lineNumber,
+      scheduleId: schedule.id,
+      generatedAt: schedule.generatedAt,
+      lockedAt: schedule.lockedAt ?? resetAt,
+      assignments: line.assignments,
+    };
+
+    set(
+      doc(db, "privateSchedules", String(line.lineNumber)),
+      storedLine as unknown as Record<string, unknown>,
+    );
+  });
+
+  const weekOneRows: PublicWeekRow[] = schedule.lines.map((line) => {
+    const assignment = line.assignments.find((item) => item.week === 1);
+
+    if (!assignment) {
+      throw new Error(
+        `Replacement Schedule #${line.lineNumber} is missing Week 1.`,
+      );
+    }
+
+    return {
+      lineId: String(line.lineNumber),
+      teamCode: assignment.teamCode,
+      teamName: assignment.teamName,
+      isBye: assignment.isBye,
+    };
+  });
+
+  set(doc(db, "weeklyPublic", "1"), {
+    week: 1,
+    publishedAt: resetAt,
+    rows: weekOneRows,
+  });
+
+  set(doc(db, "poolConfig", "main"), {
+    poolName:
+      typeof config.poolName === "string"
+        ? config.poolName
+        : "33 Pool Setup",
+    season: 2026,
+    currentWeek: 1,
+    numberSelectionOpen: false,
+    schedulesLocked: true,
+    scheduleId: schedule.id,
+    scheduleGeneratedAt: schedule.generatedAt,
+    scheduleLockedAt: schedule.lockedAt,
+    lastPullResetAt: resetAt,
+    lastPullArchiveId: archiveId,
+    updatedAt: resetAt,
+  });
+
+  set(doc(collection(db, "audit")), {
+    actionType: "pull_2026_reset",
+    archiveId,
+    previousScheduleId,
+    newScheduleId: schedule.id,
+    previousClaimCount: claimSnapshots.size,
+    commissionerUid: user.uid,
+    commissionerEmail: user.email ?? "",
+    createdAt: resetAt,
+  });
+
+  if (operationCount > 450) {
+    throw new Error(
+      "The current pull contains too many records for a safe preseason reset.",
+    );
+  }
+
+  await batch.commit();
+
+  return {
+    archive_id: archiveId,
+    new_schedule_id: schedule.id,
+    previous_schedule_id: previousScheduleId,
+    previous_claim_count: claimSnapshots.size,
+    reset_at: resetAt,
+  };
+}
+

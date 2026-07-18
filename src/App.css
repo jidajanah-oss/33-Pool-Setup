@@ -3714,3 +3714,128 @@ small,
     touch-action: manipulation;
   }
 }
+
+/* Package 11 — protected 2026 pull reset */
+.pull-reset-panel {
+  border: 2px solid #d8a51d;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 222, 0.92), rgba(255, 255, 255, 0.98));
+}
+
+.pull-reset-panel .generator-status.reset-ready {
+  border-color: #c58d00;
+  background: #fff4c7;
+  color: #6d4d00;
+}
+
+.pull-reset-preserved,
+.pull-reset-cleared {
+  margin-top: 13px;
+  padding: 14px;
+  border-radius: 15px;
+  display: grid;
+  gap: 5px;
+}
+
+.pull-reset-preserved {
+  border: 1px solid #9dc9ad;
+  background: #f0faf3;
+}
+
+.pull-reset-cleared {
+  border: 1px solid #e0c77d;
+  background: #fff9e8;
+}
+
+.pull-reset-preserved strong,
+.pull-reset-cleared strong {
+  color: var(--navy-900);
+}
+
+.pull-reset-preserved span,
+.pull-reset-cleared span {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.pull-reset-confirmation {
+  margin-top: 15px;
+  display: grid;
+  gap: 7px;
+  color: var(--navy-900);
+  font-weight: 900;
+}
+
+.pull-reset-confirmation input {
+  width: 100%;
+  min-height: 50px;
+  border: 2px solid #d8a51d;
+  border-radius: 14px;
+  padding: 0 14px;
+  background: white;
+  color: var(--navy-900);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  box-sizing: border-box;
+}
+
+.pull-reset-button {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 14px;
+  padding: 12px 16px;
+  background: #8a240f;
+  color: white;
+  font-weight: 950;
+  line-height: 1.25;
+}
+
+.pull-reset-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pull-reset-success {
+  margin-top: 14px;
+  padding: 15px;
+  border: 1px solid #85b897;
+  border-radius: 15px;
+  background: #edf9f1;
+  display: grid;
+  gap: 5px;
+}
+
+.pull-reset-success strong,
+.pull-reset-success span,
+.pull-reset-success small {
+  display: block;
+}
+
+.pull-reset-success strong {
+  color: var(--success);
+  font-size: 1.08rem;
+}
+
+.pull-reset-success span {
+  color: var(--navy-900);
+}
+
+.pull-reset-success small {
+  margin-top: 3px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+  .pull-reset-panel {
+    padding: 14px;
+  }
+
+  .pull-reset-button {
+    min-height: 56px;
+  }
+}
+

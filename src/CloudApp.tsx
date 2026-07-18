@@ -4,6 +4,7 @@ import { rules } from "./data/demoData";
 import { CloudAuthGate } from "./features/auth/CloudAuthGate";
 import { useCloudAuth } from "./features/auth/useCloudAuth";
 import { CloudCommissionerPanel } from "./features/commissioner/CloudCommissionerPanel";
+import { CloudPullResetPanel } from "./features/commissioner/CloudPullResetPanel";
 import { CloudInvitationsAndTeamPanel } from "./features/commissioner/CloudInvitationsAndTeamPanel";
 import { CloudPaymentLedgerPanel } from "./features/commissioner/CloudPaymentLedgerPanel";
 import { CloudScoringPanel } from "./features/commissioner/CloudScoringPanel";
@@ -321,6 +322,18 @@ export default function CloudApp() {
                     auth={auth}
                     cloud={cloud}
                   />
+                  {auth.profile && (
+                    <CloudPullResetPanel
+                      claimedCount={cloud.claimedCount}
+                      currentRole={
+                        isPrimaryEmail
+                          ? "primary_commissioner"
+                          : auth.profile.role
+                      }
+                      onResetComplete={cloud.refresh}
+                      poolStatus={cloud.poolStatus}
+                    />
+                  )}
                   {auth.profile && (
                     <CloudInvitationsAndTeamPanel
                       currentRole={auth.profile.role}

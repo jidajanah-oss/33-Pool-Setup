@@ -253,7 +253,7 @@ service cloud.firestore {
     match /teamScores/{weekId} {
       allow read: if signedIn();
       allow create, update: if isCommissioner();
-      allow delete: if false;
+      allow delete: if isPrimary();
     }
 
     match /weeklyResults/{weekId} {
@@ -346,6 +346,14 @@ service cloud.firestore {
 
     match /audit/{auditId} {
       allow read, write: if isCommissioner();
+    }
+
+    match /pullArchives/{archiveId} {
+      allow read, write: if isPrimary();
+
+      match /{document=**} {
+        allow read, write: if isPrimary();
+      }
     }
 
     match /{document=**} {
