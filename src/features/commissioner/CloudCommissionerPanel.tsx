@@ -137,7 +137,12 @@ export function CloudCommissionerPanel({
 
         <button
           disabled={busy}
-          onClick={() => void cloud.refresh()}
+          onClick={() =>
+            void run(
+              () => cloud.refresh(),
+              "Firebase status refreshed.",
+            )
+          }
           type="button"
         >
           Refresh Firebase Status

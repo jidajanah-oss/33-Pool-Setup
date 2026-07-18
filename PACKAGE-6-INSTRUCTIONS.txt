@@ -1,0 +1,44 @@
+33 POOL SETUP — PACKAGE 6
+Firebase Payment Ledger
+
+Player features:
+- Real Firebase payment balance.
+- $54 season total.
+- Amount due through the current NFL week.
+- Current/behind prize-payment eligibility.
+- Payment and adjustment history.
+- Winnings summary prepared for the scoring package.
+
+Commissioner features:
+- Claimed-player payment board.
+- Search by player name or schedule number.
+- Record cash, check, Venmo, PayPal, or other payments.
+- Record refunds and negative corrections.
+- Firestore transaction updates summary, transaction history, and audit log together.
+- Original transaction records cannot be edited or deleted by the app.
+- Visible Firebase refresh confirmation.
+
+Firestore collections added:
+- payments
+- paymentTransactions
+- audit entries for payment changes
+
+Important:
+Install the package, then replace and publish the Firestore rules using
+FIREBASE-PACKAGE-6-RULES.txt before testing payment entry.
+
+Install into:
+C:\Users\jidaj\Documents\GitHub\33-Pool-Setup
+
+Then:
+npm run build
+npm run dev
+
+Test:
+1. Sign in as Jimbo Primary Commissioner.
+2. Open Commissioner.
+3. Find the claimed test player.
+4. Record a $3 payment.
+5. Confirm the player shows Current for Week 1.
+6. Sign in as that player and open Payments.
+7. Confirm the $3 transaction and updated balance are visible.
