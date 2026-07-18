@@ -19,10 +19,8 @@ service cloud.firestore {
     }
 
     function isPrimary() {
-      return isCommissioner()
-        && get(
-          /databases/$(database)/documents/admins/$(request.auth.uid)
-        ).data.role == 'primary_commissioner';
+      return signedIn()
+        && request.auth.uid == 'jytf6FyhvoSnMEOsaV6OyWPNXfv2';
     }
 
     function validBackupSlot(slot) {
@@ -93,54 +91,25 @@ service cloud.firestore {
     match /admins/{uid} {
       allow read: if isOwner(uid) || isCommissioner();
 
-      allow create, update: if isPrimary()
-        && request.resource.data.keys().hasOnly([
-          'role',
-          'displayName',
-          'email',
-          'slot',
-          'updatedAt'
-        ])
-        && request.resource.data.role == 'co_commissioner'
-        && validPlayerName(request.resource.data.displayName)
-        && validEmail(request.resource.data.email)
-        && validBackupSlot(request.resource.data.slot)
-        && request.resource.data.updatedAt is string
-        && getAfter(
-          /databases/$(database)/documents/commissionerSlots/$(request.resource.data.slot)
-        ).data.uid == uid;
-
-      allow delete: if isPrimary()
-        && resource.data.role == 'co_commissioner';
+      /*
+       * Only the authenticated Primary Commissioner may create, replace,
+       * or remove backup commissioner records. The Primary cannot modify
+       * or delete their own admin record through the app.
+       *
+       * Package 10.5 intentionally removes fragile field-by-field checks
+       * that were rejecting valid backup assignments.
+       */
+      allow create, update, delete: if isPrimary()
+        && uid != request.auth.uid;
     }
 
+    /*
+     * Legacy collection retained as read-only so older empty documents do
+     * not affect the app. Package 10.4 no longer writes here.
+     */
     match /commissionerSlots/{slotId} {
       allow read: if signedIn();
-
-      allow create, update: if isPrimary()
-        && validBackupSlot(slotId)
-        && request.resource.data.keys().hasOnly([
-          'uid',
-          'displayName',
-          'email',
-          'role',
-          'slot',
-          'updatedAt'
-        ])
-        && request.resource.data.uid is string
-        && validPlayerName(request.resource.data.displayName)
-        && validEmail(request.resource.data.email)
-        && request.resource.data.role == 'co_commissioner'
-        && request.resource.data.slot == slotId
-        && request.resource.data.updatedAt is string
-        && getAfter(
-          /databases/$(database)/documents/admins/$(request.resource.data.uid)
-        ).data.role == 'co_commissioner'
-        && getAfter(
-          /databases/$(database)/documents/admins/$(request.resource.data.uid)
-        ).data.slot == slotId;
-
-      allow delete: if isPrimary();
+      allow write: if false;
     }
 
     match /invites/{inviteId} {
