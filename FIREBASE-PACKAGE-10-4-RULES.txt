@@ -1,0 +1,362 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isCommissioner() {
+      return signedIn()
+        && exists(
+          /databases/$(database)/documents/admins/$(request.auth.uid)
+        );
+    }
+
+    function isPrimary() {
+      return isCommissioner()
+        && get(
+          /databases/$(database)/documents/admins/$(request.auth.uid)
+        ).data.role == 'primary_commissioner';
+    }
+
+    function validBackupSlot(slot) {
+      return slot in ['backup1', 'backup2'];
+    }
+
+    function poolIsOpen() {
+      return get(
+        /databases/$(database)/documents/poolConfig/main
+      ).data.numberSelectionOpen == true
+      && get(
+        /databases/$(database)/documents/poolConfig/main
+      ).data.schedulesLocked == true;
+    }
+
+    function validPlayerName(name) {
+      return name is string
+        && name.size() >= 2
+        && name.size() <= 40;
+    }
+
+    function validEmail(email) {
+      return email is string
+        && email.size() >= 5
+        && email.size() <= 254;
+    }
+
+    function validScheduleNumber(value) {
+      return value is int && value >= 1 && value <= 32;
+    }
+
+    function validMoneyCents(value) {
+      return value is int && value >= 0 && value <= 5400;
+    }
+
+    function validInvite(data) {
+      return data.keys().hasAll([
+          'displayName',
+          'email',
+          'roleRequested',
+          'status',
+          'sentAt',
+          'sentByUid',
+          'sentByName'
+        ])
+        && data.keys().hasOnly([
+          'displayName',
+          'email',
+          'roleRequested',
+          'status',
+          'sentAt',
+          'sentByUid',
+          'sentByName',
+          'linkedUid',
+          'linkedAt'
+        ])
+        && validPlayerName(data.displayName)
+        && validEmail(data.email)
+        && data.roleRequested == 'player'
+        && data.status in ['pending', 'signed_in']
+        && data.sentAt is string
+        && data.sentByUid is string
+        && validPlayerName(data.sentByName)
+        && (!('linkedUid' in data) || data.linkedUid is string)
+        && (!('linkedAt' in data) || data.linkedAt is string);
+    }
+
+    match /admins/{uid} {
+      allow read: if isOwner(uid) || isCommissioner();
+
+      /*
+       * The single Primary Commissioner controls both backup records.
+       * Each backup's slot is stored directly on admins/{uid}.
+       */
+      allow create, update: if isPrimary()
+        && uid != request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'role',
+          'displayName',
+          'email',
+          'slot',
+          'updatedAt'
+        ])
+        && request.resource.data.role == 'co_commissioner'
+        && validBackupSlot(request.resource.data.slot)
+        && validPlayerName(request.resource.data.displayName)
+        && validEmail(request.resource.data.email)
+        && request.resource.data.updatedAt is string;
+
+      allow delete: if isPrimary()
+        && resource.data.role == 'co_commissioner';
+    }
+
+    /*
+     * Legacy collection retained as read-only so older empty documents do
+     * not affect the app. Package 10.4 no longer writes here.
+     */
+    match /commissionerSlots/{slotId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /invites/{inviteId} {
+      allow read: if isCommissioner()
+        || (
+          signedIn()
+          && resource.data.email == request.auth.token.email
+        );
+
+      allow create: if isCommissioner()
+        && validInvite(request.resource.data)
+        && request.resource.data.status == 'pending'
+        && request.resource.data.sentByUid == request.auth.uid;
+
+      allow update: if (
+          isCommissioner()
+          && validInvite(request.resource.data)
+        )
+        || (
+          signedIn()
+          && resource.data.email == request.auth.token.email
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status',
+            'linkedUid',
+            'linkedAt'
+          ])
+          && request.resource.data.status == 'signed_in'
+          && request.resource.data.linkedUid == request.auth.uid
+          && request.resource.data.linkedAt is string
+        );
+
+      allow delete: if isCommissioner();
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isCommissioner();
+
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'displayName',
+          'email',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && validPlayerName(request.resource.data.displayName);
+
+      allow update: if isOwner(uid)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && validPlayerName(request.resource.data.displayName);
+
+      allow delete: if isCommissioner();
+    }
+
+    match /poolConfig/{documentId} {
+      allow read: if signedIn();
+      allow write: if isCommissioner();
+    }
+
+    match /claims/{lineId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && poolIsOpen()
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'playerName',
+          'lineId',
+          'claimedAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.lineId == lineId
+        && validPlayerName(request.resource.data.playerName)
+        && exists(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        )
+        && request.resource.data.playerName
+          == get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.displayName
+        && !exists(
+          /databases/$(database)/documents/userClaims/$(request.auth.uid)
+        )
+        && getAfter(
+          /databases/$(database)/documents/userClaims/$(request.auth.uid)
+        ).data.lineId == lineId;
+
+      allow update, delete: if isCommissioner();
+    }
+
+    match /userClaims/{uid} {
+      allow read: if isOwner(uid) || isCommissioner();
+
+      allow create: if isOwner(uid)
+        && poolIsOpen()
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'playerName',
+          'lineId',
+          'claimedAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && validPlayerName(request.resource.data.playerName)
+        && request.resource.data.playerName
+          == get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.displayName
+        && !exists(
+          /databases/$(database)/documents/userClaims/$(uid)
+        )
+        && getAfter(
+          /databases/$(database)/documents/claims/$(request.resource.data.lineId)
+        ).data.uid == uid;
+
+      allow update, delete: if isCommissioner();
+    }
+
+    match /privateSchedules/{lineId} {
+      allow read: if isCommissioner()
+        || (
+          signedIn()
+          && exists(
+            /databases/$(database)/documents/claims/$(lineId)
+          )
+          && get(
+            /databases/$(database)/documents/claims/$(lineId)
+          ).data.uid == request.auth.uid
+        );
+
+      allow write: if isCommissioner();
+    }
+
+    match /teamScores/{weekId} {
+      allow read: if signedIn();
+      allow create, update: if isCommissioner();
+      allow delete: if false;
+    }
+
+    match /weeklyResults/{weekId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isCommissioner();
+    }
+
+    match /weeklyPublic/{weekId} {
+      allow read: if signedIn();
+      allow write: if isCommissioner();
+    }
+
+    match /winners/{winnerId} {
+      allow read: if signedIn();
+      allow write: if isCommissioner();
+    }
+
+    match /payments/{uid} {
+      allow read: if isOwner(uid) || isCommissioner();
+
+      allow create, update: if isCommissioner()
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'playerName',
+          'scheduleNumber',
+          'amountPaidCents',
+          'seasonAmountDueCents',
+          'winningsEarnedCents',
+          'winningsPaidCents',
+          'updatedAt'
+        ])
+        && request.resource.data.uid == uid
+        && validPlayerName(request.resource.data.playerName)
+        && validScheduleNumber(request.resource.data.scheduleNumber)
+        && validMoneyCents(request.resource.data.amountPaidCents)
+        && request.resource.data.seasonAmountDueCents == 5400
+        && request.resource.data.winningsEarnedCents is int
+        && request.resource.data.winningsEarnedCents >= 0
+        && request.resource.data.winningsPaidCents is int
+        && request.resource.data.winningsPaidCents >= 0
+        && request.resource.data.updatedAt is string;
+
+      allow delete: if false;
+    }
+
+    match /paymentTransactions/{transactionId} {
+      allow read: if isCommissioner()
+        || (
+          signedIn()
+          && resource.data.uid == request.auth.uid
+        );
+
+      allow create: if isCommissioner()
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'playerName',
+          'scheduleNumber',
+          'amountCents',
+          'direction',
+          'method',
+          'note',
+          'occurredAt',
+          'createdAt',
+          'createdByUid',
+          'createdByName'
+        ])
+        && request.resource.data.uid is string
+        && validPlayerName(request.resource.data.playerName)
+        && validScheduleNumber(request.resource.data.scheduleNumber)
+        && request.resource.data.amountCents is int
+        && request.resource.data.amountCents > 0
+        && request.resource.data.amountCents <= 5400
+        && request.resource.data.direction in ['credit', 'debit']
+        && request.resource.data.method in [
+          'cash',
+          'check',
+          'venmo',
+          'paypal',
+          'other'
+        ]
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 200
+        && request.resource.data.occurredAt is string
+        && request.resource.data.createdAt is string
+        && request.resource.data.createdByUid == request.auth.uid
+        && validPlayerName(request.resource.data.createdByName);
+
+      allow update, delete: if false;
+    }
+
+    match /audit/{auditId} {
+      allow read, write: if isCommissioner();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

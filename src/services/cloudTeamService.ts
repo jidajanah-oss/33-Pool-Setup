@@ -34,13 +34,6 @@ interface StoredAdmin {
   slot?: unknown;
 }
 
-interface StoredSlot {
-  uid?: unknown;
-  displayName?: unknown;
-  email?: unknown;
-  role?: unknown;
-  slot?: unknown;
-}
 
 interface StoredInvite {
   displayName?: unknown;
@@ -159,14 +152,12 @@ export async function fetchCloudCommissionerTeam(): Promise<{
   const [
     userSnapshots,
     adminSnapshots,
-    slotSnapshots,
     inviteSnapshots,
     currentUserSnapshot,
     currentAdminSnapshot,
   ] = await Promise.all([
     getDocsFromServer(collection(db, "users")),
     getDocsFromServer(collection(db, "admins")),
-    getDocsFromServer(collection(db, "commissionerSlots")),
     getDocsFromServer(collection(db, "invites")),
     getDoc(doc(db, "users", currentUser.uid)),
     getDoc(doc(db, "admins", currentUser.uid)),
@@ -266,23 +257,23 @@ export async function fetchCloudCommissionerTeam(): Promise<{
     backup2: null,
   };
 
-  slotSnapshots.forEach((snapshot) => {
-    if (!validSlot(snapshot.id)) {
+  adminsByUid.forEach((adminData, uid) => {
+    if (
+      adminData.role !== "co_commissioner" ||
+      !validSlot(asString(adminData.slot))
+    ) {
       return;
     }
 
-    const slotData = snapshot.data() as StoredSlot;
-    const uid = asString(slotData.uid);
+    const slot = asString(
+      adminData.slot,
+    ) as CloudCommissionerSlotId;
 
-    if (!uid) {
-      return;
-    }
-
-    backups[snapshot.id] = mapMember(
+    backups[slot] = mapMember(
       uid,
       usersByUid.get(uid),
-      adminsByUid.get(uid),
-      snapshot.id,
+      adminData,
+      slot,
     );
   });
 
@@ -446,29 +437,49 @@ export async function assignCloudBackupCommissioner(
   const primary = requireCurrentUser();
   const selectedUserRef = doc(db, "users", uid);
   const targetAdminRef = doc(db, "admins", uid);
-  const slotRef = doc(db, "commissionerSlots", slot);
-  const otherSlotId: CloudCommissionerSlotId =
-    slot === "backup1" ? "backup2" : "backup1";
-  const otherSlotRef = doc(
-    db,
-    "commissionerSlots",
-    otherSlotId,
-  );
   const auditRef = doc(collection(db, "audit"));
   const now = new Date().toISOString();
 
+  /*
+   * Backups are stored directly in admins/{uid}. The slot field identifies
+   * Backup Commissioner 1 or 2. This removes the unnecessary second
+   * commissionerSlots write that was being rejected by Firestore.
+   */
+  const adminSnapshots = await getDocsFromServer(
+    collection(db, "admins"),
+  );
+
+  let previousUidForSlot = "";
+
+  adminSnapshots.forEach((snapshot) => {
+    const data = snapshot.data() as StoredAdmin;
+    const existingSlot = asString(data.slot);
+
+    if (
+      data.role === "co_commissioner" &&
+      existingSlot === slot &&
+      snapshot.id !== uid
+    ) {
+      previousUidForSlot = snapshot.id;
+    }
+
+    if (
+      data.role === "co_commissioner" &&
+      existingSlot !== slot &&
+      snapshot.id === uid
+    ) {
+      throw new Error(
+        "That person is already assigned to the other backup slot.",
+      );
+    }
+  });
+
   await runTransaction(db, async (transaction) => {
-    const [
-      selectedUserSnapshot,
-      targetAdminSnapshot,
-      slotSnapshot,
-      otherSlotSnapshot,
-    ] = await Promise.all([
-      transaction.get(selectedUserRef),
-      transaction.get(targetAdminRef),
-      transaction.get(slotRef),
-      transaction.get(otherSlotRef),
-    ]);
+    const [selectedUserSnapshot, targetAdminSnapshot] =
+      await Promise.all([
+        transaction.get(selectedUserRef),
+        transaction.get(targetAdminRef),
+      ]);
 
     if (!selectedUserSnapshot.exists()) {
       throw new Error(
@@ -485,37 +496,18 @@ export async function assignCloudBackupCommissioner(
       );
     }
 
-    if (
-      otherSlotSnapshot.exists() &&
-      otherSlotSnapshot.data().uid === uid
-    ) {
-      throw new Error(
-        "That person is already assigned to the other backup slot.",
-      );
-    }
-
     const userData = selectedUserSnapshot.data() as StoredUser;
     const displayName = asString(
       userData.displayName,
       "Backup Commissioner",
     );
     const email = asString(userData.email);
-    const previousUid = slotSnapshot.exists()
-      ? asString(slotSnapshot.data().uid)
-      : "";
 
-    if (previousUid && previousUid !== uid) {
-      transaction.delete(doc(db, "admins", previousUid));
+    if (previousUidForSlot) {
+      transaction.delete(
+        doc(db, "admins", previousUidForSlot),
+      );
     }
-
-    transaction.set(slotRef, {
-      uid,
-      displayName,
-      email,
-      role: "co_commissioner",
-      slot,
-      updatedAt: now,
-    });
 
     transaction.set(targetAdminRef, {
       role: "co_commissioner",
@@ -548,32 +540,37 @@ export async function clearCloudBackupCommissioner(
 
   const db = requireFirestore();
   const primary = requireCurrentUser();
-  const slotRef = doc(db, "commissionerSlots", slot);
   const auditRef = doc(collection(db, "audit"));
   const now = new Date().toISOString();
+  const adminSnapshots = await getDocsFromServer(
+    collection(db, "admins"),
+  );
+
+  const assigned = adminSnapshots.docs.find((snapshot) => {
+    const data = snapshot.data() as StoredAdmin;
+
+    return (
+      data.role === "co_commissioner" &&
+      asString(data.slot) === slot
+    );
+  });
+
+  if (!assigned) {
+    return;
+  }
+
+  const data = assigned.data() as StoredAdmin;
+  const displayName = asString(
+    data.displayName,
+    "Backup Commissioner",
+  );
 
   await runTransaction(db, async (transaction) => {
-    const slotSnapshot = await transaction.get(slotRef);
-
-    if (!slotSnapshot.exists()) {
-      return;
-    }
-
-    const uid = asString(slotSnapshot.data().uid);
-    const displayName = asString(
-      slotSnapshot.data().displayName,
-      "Backup Commissioner",
-    );
-
-    if (uid) {
-      transaction.delete(doc(db, "admins", uid));
-    }
-
-    transaction.delete(slotRef);
+    transaction.delete(doc(db, "admins", assigned.id));
     transaction.set(auditRef, {
       actionType: "backup_commissioner_removed",
       slot,
-      affectedUid: uid,
+      affectedUid: assigned.id,
       affectedDisplayName: displayName,
       commissionerUid: primary.uid,
       createdAt: now,
