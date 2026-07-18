@@ -30,10 +30,22 @@ const nav: Array<{ id: AppScreen; label: string }> = [
   { id: "commissioner", label: "Commissioner" },
 ];
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{
+    outcome: "accepted" | "dismissed";
+    platform: string;
+  }>;
+}
+
 export default function CloudApp() {
   const auth = useCloudAuth();
   const cloud = useCloudEnrollment(auth.profile);
   const [screen, setScreen] = useState<AppScreen>("home");
+  const [installPrompt, setInstallPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [isIos, setIsIos] = useState(false);
   const canOpenCommissioner =
     auth.profile?.role === "primary_commissioner" ||
     auth.profile?.role === "co_commissioner";
@@ -61,10 +73,62 @@ export default function CloudApp() {
     .toUpperCase();
 
   useEffect(() => {
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      Boolean(
+        (window.navigator as Navigator & { standalone?: boolean })
+          .standalone,
+      );
+    const ios =
+      /iPad|iPhone|iPod/.test(window.navigator.userAgent) &&
+      !(window as Window & { MSStream?: unknown }).MSStream;
+
+    setIsStandalone(standalone);
+    setIsIos(ios);
+
+    const captureInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    const markInstalled = () => {
+      setInstallPrompt(null);
+      setIsStandalone(true);
+    };
+
+    window.addEventListener(
+      "beforeinstallprompt",
+      captureInstallPrompt,
+    );
+    window.addEventListener("appinstalled", markInstalled);
+
+    return () => {
+      window.removeEventListener(
+        "beforeinstallprompt",
+        captureInstallPrompt,
+      );
+      window.removeEventListener("appinstalled", markInstalled);
+    };
+  }, []);
+
+  useEffect(() => {
     if (screen === "home") {
       scoring.setSelectedWeek(currentWeek);
     }
   }, [currentWeek, screen]);
+
+  const installApp = async (): Promise<void> => {
+    if (!installPrompt) {
+      return;
+    }
+
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+
+    if (choice.outcome === "accepted") {
+      setInstallPrompt(null);
+    }
+  };
 
   return (
     <CloudAuthGate auth={auth}>
@@ -215,6 +279,10 @@ export default function CloudApp() {
                 auth={auth}
                 canOpenCommissioner={canOpenCommissioner}
                 cloud={cloud}
+                installPromptAvailable={Boolean(installPrompt)}
+                isIos={isIos}
+                isStandalone={isStandalone}
+                onInstall={installApp}
                 onNavigate={setScreen}
                 payments={payments}
               />
@@ -498,12 +566,20 @@ function CloudMore({
   auth,
   cloud,
   canOpenCommissioner,
+  installPromptAvailable,
+  isIos,
+  isStandalone,
+  onInstall,
   onNavigate,
   payments,
 }: {
   auth: ReturnType<typeof useCloudAuth>;
   cloud: ReturnType<typeof useCloudEnrollment>;
   canOpenCommissioner: boolean;
+  installPromptAvailable: boolean;
+  isIos: boolean;
+  isStandalone: boolean;
+  onInstall: () => Promise<void>;
   onNavigate: (screen: AppScreen) => void;
   payments: ReturnType<typeof useCloudPayments>;
 }) {
@@ -559,6 +635,43 @@ function CloudMore({
             symbol="C"
           />
         )}
+      </section>
+
+      <section className="section-card production-app-card">
+        <div className="section-heading">
+          <h2>Install 33 Pool</h2>
+          <p>GitHub Pages production PWA</p>
+        </div>
+
+        {isStandalone ? (
+          <div className="production-ready-message">
+            <strong>App installed</strong>
+            <span>33 Pool is running in standalone app mode.</span>
+          </div>
+        ) : installPromptAvailable ? (
+          <button
+            className="production-install-button"
+            onClick={() => void onInstall()}
+            type="button"
+          >
+            Install on This Device
+          </button>
+        ) : isIos ? (
+          <div className="production-install-help">
+            <strong>Install on iPhone or iPad</strong>
+            <span>Tap Share, then choose Add to Home Screen.</span>
+          </div>
+        ) : (
+          <div className="production-install-help">
+            <strong>Install from your browser menu</strong>
+            <span>Open the browser menu and choose Install app or Add to Home Screen.</span>
+          </div>
+        )}
+
+        <div className="production-url">
+          <small>Production address</small>
+          <strong>jidajanah-oss.github.io/33-Pool-Setup/</strong>
+        </div>
       </section>
 
       <section className="section-card">

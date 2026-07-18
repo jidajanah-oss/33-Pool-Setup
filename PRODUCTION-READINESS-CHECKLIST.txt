@@ -1,0 +1,18 @@
+33 POOL SETUP — PRODUCTION READINESS CHECKLIST
+
+[ ] Package 9 production build passes locally
+[ ] Package 9 committed and pushed to main
+[ ] GitHub Pages source set to GitHub Actions
+[ ] GitHub build job passes
+[ ] GitHub deploy job passes
+[ ] Live URL opens: https://jidajanah-oss.github.io/33-Pool-Setup/
+[ ] Firebase authorized domain includes jidajanah-oss.github.io
+[ ] Jimbo can sign in on the live URL
+[ ] A player can sign in on the live URL
+[ ] Existing Firebase schedule is Published
+[ ] Existing number claims are unchanged
+[ ] Payment ledger loads on live URL
+[ ] NFL sync loads on live URL
+[ ] Android/Chrome install works
+[ ] iPhone Add to Home Screen works
+[ ] Installed app launches in standalone mode

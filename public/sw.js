@@ -1,8 +1,17 @@
-const CACHE_NAME = "33-pool-firebase-shell-v1";
+const CACHE_NAME = "33-pool-production-v9";
+const APP_SHELL = [
+  "./",
+  "./manifest.webmanifest",
+  "./app-icon-192.png",
+  "./app-icon-512.png",
+  "./maskable-icon-512.png",
+  "./apple-touch-icon.png",
+  "./favicon-32.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(["./"])),
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)),
   );
   self.skipWaiting();
 });
@@ -38,29 +47,29 @@ self.addEventListener("fetch", (event) => {
       fetch(event.request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put("./", copy));
+          void caches.open(CACHE_NAME).then((cache) => cache.put("./", copy));
           return response;
         })
-        .catch(() => caches.match("./")),
+        .catch(async () => (await caches.match("./")) || Response.error()),
     );
     return;
   }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
-
-      return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200) {
+      const network = fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            void caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put(event.request, copy));
+          }
           return response;
-        }
+        })
+        .catch(() => cached || Response.error());
 
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        return response;
-      });
+      return cached || network;
     }),
   );
 });

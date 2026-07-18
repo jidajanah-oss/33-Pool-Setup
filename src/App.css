@@ -3087,3 +3087,58 @@ small,
     text-align: left;
   }
 }
+
+/* Package 9 — production PWA installation and deployment readiness */
+.production-app-card {
+  display: grid;
+  gap: 13px;
+}
+
+.production-install-button {
+  min-height: 52px;
+  width: 100%;
+  border: 0;
+  border-radius: 14px;
+  padding: 0 16px;
+  background: var(--navy-900);
+  color: white;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.production-ready-message,
+.production-install-help,
+.production-url {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--ice-100);
+}
+
+.production-ready-message strong,
+.production-ready-message span,
+.production-install-help strong,
+.production-install-help span,
+.production-url small,
+.production-url strong {
+  display: block;
+}
+
+.production-ready-message strong,
+.production-install-help strong,
+.production-url strong {
+  color: var(--navy-900);
+}
+
+.production-ready-message span,
+.production-install-help span,
+.production-url small {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.production-url strong {
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+  font-size: 0.92rem;
+}

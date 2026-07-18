@@ -1,24 +1,39 @@
 {
+  "id": "/33-Pool-Setup/",
   "name": "33 Pool Setup",
   "short_name": "33 Pool",
-  "description": "Mobile NFL exact-33 pool tracker",
-  "start_url": ".",
-  "scope": ".",
+  "description": "NFL exact-33 pool tracker for players and commissioners",
+  "start_url": "/33-Pool-Setup/",
+  "scope": "/33-Pool-Setup/",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
   "orientation": "portrait-primary",
   "background_color": "#edf3f8",
   "theme_color": "#001e44",
+  "categories": [
+    "sports",
+    "utilities"
+  ],
   "icons": [
     {
-      "src": "app-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "maskable-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "maskable"
     }
   ]
