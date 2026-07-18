@@ -1,7 +1,6 @@
 import { sendSignInLinkToEmail } from "firebase/auth";
 import {
   collection,
-  deleteDoc,
   deleteField,
   doc,
   getDoc,
@@ -13,6 +12,11 @@ import {
   requireFirebaseAuth,
   requireFirestore,
 } from "../lib/firebase";
+import {
+  getCloudRoleForUid,
+  requireCloudCommissioner,
+  requireCloudPrimary,
+} from "./cloudRoleService";
 import type {
   CloudCommissionerMember,
   CloudCommissionerSlotId,
@@ -66,41 +70,6 @@ function requireCurrentUser() {
   return user;
 }
 
-async function getRole(uid: string): Promise<CloudRole> {
-  const snapshot = await getDoc(
-    doc(requireFirestore(), "admins", uid),
-  );
-
-  if (!snapshot.exists()) {
-    return "player";
-  }
-
-  return snapshot.data().role === "co_commissioner"
-    ? "co_commissioner"
-    : "primary_commissioner";
-}
-
-async function requireCommissioner(): Promise<CloudRole> {
-  const user = requireCurrentUser();
-  const role = await getRole(user.uid);
-
-  if (role === "player") {
-    throw new Error("Commissioner access is required.");
-  }
-
-  return role;
-}
-
-async function requirePrimary(): Promise<void> {
-  const role = await requireCommissioner();
-
-  if (role !== "primary_commissioner") {
-    throw new Error(
-      "Only the Primary Commissioner can assign backup commissioners.",
-    );
-  }
-}
-
 function validSlot(
   value: string,
 ): value is CloudCommissionerSlotId {
@@ -140,27 +109,24 @@ export async function fetchCloudCommissionerTeam(): Promise<{
     CloudCommissionerMember | null
   >;
 }> {
-  const currentRole = await requireCommissioner();
+  const currentRole = await requireCloudCommissioner();
   const currentUser = requireCurrentUser();
   const db = requireFirestore();
 
-  /*
-   * Force fresh server reads for the commissioner directory. This avoids a
-   * stale admins collection after the Primary record is corrected manually
-   * in the Firebase console.
-   */
   const [
     userSnapshots,
     adminSnapshots,
     inviteSnapshots,
     currentUserSnapshot,
     currentAdminSnapshot,
+    teamSnapshot,
   ] = await Promise.all([
     getDocsFromServer(collection(db, "users")),
     getDocsFromServer(collection(db, "admins")),
     getDocsFromServer(collection(db, "invites")),
     getDoc(doc(db, "users", currentUser.uid)),
     getDoc(doc(db, "admins", currentUser.uid)),
+    getDoc(doc(db, "commissionerTeam", "main")),
   ]);
 
   const usersByUid = new Map<string, StoredUser>();
@@ -178,10 +144,16 @@ export async function fetchCloudCommissionerTeam(): Promise<{
     .map((snapshot) => {
       const data = snapshot.data() as StoredUser;
       const admin = adminsByUid.get(snapshot.id);
+      const teamData = teamSnapshot.exists()
+        ? teamSnapshot.data()
+        : {};
+      const isBackup =
+        asString(teamData.backup1Uid) === snapshot.id ||
+        asString(teamData.backup2Uid) === snapshot.id;
       const role: CloudRole =
         admin?.role === "primary_commissioner"
           ? "primary_commissioner"
-          : admin?.role === "co_commissioner"
+          : isBackup
             ? "co_commissioner"
             : "player";
 
@@ -257,25 +229,70 @@ export async function fetchCloudCommissionerTeam(): Promise<{
     backup2: null,
   };
 
-  adminsByUid.forEach((adminData, uid) => {
-    if (
-      adminData.role !== "co_commissioner" ||
-      !validSlot(asString(adminData.slot))
-    ) {
-      return;
-    }
+  let backup1Uid = teamSnapshot.exists()
+    ? asString(teamSnapshot.data().backup1Uid)
+    : "";
+  let backup2Uid = teamSnapshot.exists()
+    ? asString(teamSnapshot.data().backup2Uid)
+    : "";
+  const teamVersion = teamSnapshot.exists()
+    ? Number(teamSnapshot.data().version)
+    : 0;
 
-    const slot = asString(
-      adminData.slot,
-    ) as CloudCommissionerSlotId;
+  /*
+   * One-time migration from the legacy co_commissioner admin records.
+   * After version 2 is written, backup roles are controlled only by
+   * commissionerTeam/main.
+   */
+  if (teamVersion !== 2 && currentRole === "primary_commissioner") {
+    adminsByUid.forEach((adminData, uid) => {
+      if (
+        adminData.role === "co_commissioner" &&
+        asString(adminData.slot) === "backup1" &&
+        !backup1Uid
+      ) {
+        backup1Uid = uid;
+      }
 
-    backups[slot] = mapMember(
-      uid,
-      usersByUid.get(uid),
-      adminData,
-      slot,
+      if (
+        adminData.role === "co_commissioner" &&
+        asString(adminData.slot) === "backup2" &&
+        !backup2Uid
+      ) {
+        backup2Uid = uid;
+      }
+    });
+
+    await setDoc(
+      doc(db, "commissionerTeam", "main"),
+      {
+        backup1Uid: backup1Uid || deleteField(),
+        backup2Uid: backup2Uid || deleteField(),
+        version: 2,
+        updatedAt: new Date().toISOString(),
+        updatedByUid: currentUser.uid,
+      },
+      { merge: true },
     );
-  });
+  }
+
+  if (backup1Uid) {
+    backups.backup1 = mapMember(
+      backup1Uid,
+      usersByUid.get(backup1Uid),
+      adminsByUid.get(backup1Uid),
+      "backup1",
+    );
+  }
+
+  if (backup2Uid) {
+    backups.backup2 = mapMember(
+      backup2Uid,
+      usersByUid.get(backup2Uid),
+      adminsByUid.get(backup2Uid),
+      "backup2",
+    );
+  }
 
   const linkedUidByEmail = new Map(
     users.map((user) => [normalizeEmail(user.email), user.uid]),
@@ -332,7 +349,7 @@ export async function createCloudPoolInvite(
   displayName: string,
   email: string,
 ): Promise<void> {
-  await requireCommissioner();
+  await requireCloudCommissioner();
 
   const cleanDisplayName = cleanName(displayName);
   const cleanEmail = normalizeEmail(email);
@@ -385,7 +402,7 @@ export async function createCloudPoolInvite(
 export async function resendCloudPoolInvite(
   inviteId: string,
 ): Promise<void> {
-  await requireCommissioner();
+  await requireCloudCommissioner();
 
   const db = requireFirestore();
   const inviteRef = doc(db, "invites", inviteId);
@@ -427,7 +444,7 @@ export async function assignCloudBackupCommissioner(
   slot: CloudCommissionerSlotId,
   uid: string,
 ): Promise<void> {
-  await requirePrimary();
+  await requireCloudPrimary();
 
   if (!validSlot(slot)) {
     throw new Error("Choose Backup Commissioner 1 or 2.");
@@ -435,16 +452,7 @@ export async function assignCloudBackupCommissioner(
 
   const db = requireFirestore();
   const primary = requireCurrentUser();
-  const selectedUserRef = doc(db, "users", uid);
-  const targetAdminRef = doc(db, "admins", uid);
-  const now = new Date().toISOString();
-
-  const [selectedUserSnapshot, targetAdminSnapshot, adminSnapshots] =
-    await Promise.all([
-      getDoc(selectedUserRef),
-      getDoc(targetAdminRef),
-      getDocsFromServer(collection(db, "admins")),
-    ]);
+  const selectedUserSnapshot = await getDoc(doc(db, "users", uid));
 
   if (!selectedUserSnapshot.exists()) {
     throw new Error(
@@ -452,93 +460,64 @@ export async function assignCloudBackupCommissioner(
     );
   }
 
-  if (
-    targetAdminSnapshot.exists() &&
-    targetAdminSnapshot.data().role === "primary_commissioner"
-  ) {
+  const selectedRole = await getCloudRoleForUid(uid);
+
+  if (uid === primary.uid || selectedRole === "primary_commissioner") {
     throw new Error(
       "The Primary Commissioner cannot be assigned to a backup slot.",
     );
   }
 
-  let previousUidForSlot = "";
+  const teamRef = doc(db, "commissionerTeam", "main");
+  const teamSnapshot = await getDoc(teamRef);
+  const teamData = teamSnapshot.exists() ? teamSnapshot.data() : {};
+  const otherUid =
+    slot === "backup1"
+      ? asString(teamData.backup2Uid)
+      : asString(teamData.backup1Uid);
 
-  adminSnapshots.forEach((snapshot) => {
-    const data = snapshot.data() as StoredAdmin;
-    const existingSlot = asString(data.slot);
-
-    if (
-      data.role === "co_commissioner" &&
-      existingSlot === slot &&
-      snapshot.id !== uid
-    ) {
-      previousUidForSlot = snapshot.id;
-    }
-
-    if (
-      data.role === "co_commissioner" &&
-      existingSlot !== slot &&
-      snapshot.id === uid
-    ) {
-      throw new Error(
-        "That person is already assigned to the other backup slot.",
-      );
-    }
-  });
-
-  const userData = selectedUserSnapshot.data() as StoredUser;
-  const displayName = asString(
-    userData.displayName,
-    "Backup Commissioner",
-  );
-  const email = asString(userData.email);
-
-  /*
-   * Write the protected role directly. Audit logging is intentionally
-   * secondary so an audit permission issue cannot block the role change.
-   */
-  try {
-    await setDoc(targetAdminRef, {
-      role: "co_commissioner",
-      displayName,
-      email,
-      slot,
-      updatedAt: now,
-    });
-
-    if (previousUidForSlot) {
-      await deleteDoc(doc(db, "admins", previousUidForSlot));
-    }
-  } catch (caught) {
-    const detail =
-      caught instanceof Error
-        ? caught.message
-        : "Firebase rejected the backup role write.";
-
+  if (otherUid === uid) {
     throw new Error(
-      `${detail} Signed in as ${primary.email ?? "unknown email"} (${primary.uid}).`,
+      "That person is already assigned to the other backup slot.",
     );
   }
+
+  const fieldName =
+    slot === "backup1" ? "backup1Uid" : "backup2Uid";
+
+  await setDoc(
+    teamRef,
+    {
+      [fieldName]: uid,
+      version: 2,
+      updatedAt: new Date().toISOString(),
+      updatedByUid: primary.uid,
+    },
+    { merge: true },
+  );
 
   try {
     await setDoc(doc(collection(db, "audit")), {
       actionType: "backup_commissioner_assigned",
       slot,
       affectedUid: uid,
-      affectedDisplayName: displayName,
-      affectedEmail: email,
+      affectedDisplayName: asString(
+        selectedUserSnapshot.data().displayName,
+        "Backup Commissioner",
+      ),
+      affectedEmail: asString(selectedUserSnapshot.data().email),
       commissionerUid: primary.uid,
-      createdAt: now,
+      createdAt: new Date().toISOString(),
     });
   } catch {
-    // The role assignment is authoritative. Audit failure must not undo it.
+    // Team assignment remains authoritative.
   }
 }
 
 export async function clearCloudBackupCommissioner(
   slot: CloudCommissionerSlotId,
 ): Promise<void> {
-  await requirePrimary();
+  await requireCloudPrimary();
 
   if (!validSlot(slot)) {
     throw new Error("Choose a valid backup commissioner slot.");
@@ -546,53 +525,29 @@ export async function clearCloudBackupCommissioner(
 
   const db = requireFirestore();
   const primary = requireCurrentUser();
-  const now = new Date().toISOString();
-  const adminSnapshots = await getDocsFromServer(
-    collection(db, "admins"),
+  const teamRef = doc(db, "commissionerTeam", "main");
+  const fieldName =
+    slot === "backup1" ? "backup1Uid" : "backup2Uid";
+
+  await setDoc(
+    teamRef,
+    {
+      [fieldName]: deleteField(),
+      version: 2,
+      updatedAt: new Date().toISOString(),
+      updatedByUid: primary.uid,
+    },
+    { merge: true },
   );
-
-  const assigned = adminSnapshots.docs.find((snapshot) => {
-    const data = snapshot.data() as StoredAdmin;
-
-    return (
-      data.role === "co_commissioner" &&
-      asString(data.slot) === slot
-    );
-  });
-
-  if (!assigned) {
-    return;
-  }
-
-  const data = assigned.data() as StoredAdmin;
-  const displayName = asString(
-    data.displayName,
-    "Backup Commissioner",
-  );
-
-  try {
-    await deleteDoc(doc(db, "admins", assigned.id));
-  } catch (caught) {
-    const detail =
-      caught instanceof Error
-        ? caught.message
-        : "Firebase rejected the backup removal.";
-
-    throw new Error(
-      `${detail} Signed in as ${primary.email ?? "unknown email"} (${primary.uid}).`,
-    );
-  }
 
   try {
     await setDoc(doc(collection(db, "audit")), {
       actionType: "backup_commissioner_removed",
       slot,
-      affectedUid: assigned.id,
-      affectedDisplayName: displayName,
       commissionerUid: primary.uid,
-      createdAt: now,
+      createdAt: new Date().toISOString(),
     });
   } catch {
-    // The role removal is authoritative. Audit failure must not restore it.
+    // Team removal remains authoritative.
   }
 }

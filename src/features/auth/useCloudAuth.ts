@@ -25,7 +25,8 @@ import {
   requireFirebaseAuth,
   requireFirestore,
 } from "../../lib/firebase";
-import type { CloudProfile, CloudRole } from "../../types/cloud";
+import type { CloudProfile } from "../../types/cloud";
+import { getCloudRoleForUid } from "../../services/cloudRoleService";
 
 const EMAIL_STORAGE_KEY = "33-pool-firebase-email";
 const NAME_STORAGE_KEY = "33-pool-firebase-display-name";
@@ -95,7 +96,6 @@ async function loadOrCreateProfile(
 ): Promise<CloudProfile> {
   const firestore = requireFirestore();
   const userRef = doc(firestore, "users", user.uid);
-  const adminRef = doc(firestore, "admins", user.uid);
   const email = user.email?.trim().toLowerCase() ?? "";
 
   const [userSnapshot, invite] = await Promise.all([
@@ -163,19 +163,11 @@ async function loadOrCreateProfile(
     });
   }
 
-  const [refreshedUser, refreshedAdmin] = await Promise.all([
+  const [refreshedUser, role] = await Promise.all([
     getDoc(userRef),
-    getDoc(adminRef),
+    getCloudRoleForUid(user.uid),
   ]);
   const data = refreshedUser.data();
-  const adminData = refreshedAdmin.data();
-  const role: CloudRole =
-    refreshedAdmin.exists() &&
-    adminData?.role === "co_commissioner"
-      ? "co_commissioner"
-      : refreshedAdmin.exists()
-        ? "primary_commissioner"
-        : "player";
 
   return {
     id: user.uid,
@@ -261,6 +253,12 @@ export function useCloudAuth(): CloudAuthController {
       () => refreshCurrentProfile(),
     );
 
+    const unsubscribeTeam = onSnapshot(
+      doc(firestore, "commissionerTeam", "main"),
+      refreshCurrentProfile,
+      () => refreshCurrentProfile(),
+    );
+
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") {
         refreshCurrentProfile();
@@ -277,6 +275,7 @@ export function useCloudAuth(): CloudAuthController {
     return () => {
       active = false;
       unsubscribeAdmin();
+      unsubscribeTeam();
       window.removeEventListener("focus", refreshCurrentProfile);
       window.removeEventListener("pageshow", refreshCurrentProfile);
       document.removeEventListener(

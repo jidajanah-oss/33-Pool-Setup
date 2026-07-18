@@ -8,6 +8,7 @@ import {
   where,
 } from "firebase/firestore";
 import { requireFirebaseAuth, requireFirestore } from "../lib/firebase";
+import { getCloudRoleForUid } from "./cloudRoleService";
 import type {
   CloudPaymentAccount,
   CloudPaymentEntryInput,
@@ -102,17 +103,7 @@ function buildAccount(
 }
 
 async function getCurrentRole(): Promise<CloudRole> {
-  const db = requireFirestore();
-  const user = requireCurrentUser();
-  const adminSnapshot = await getDoc(doc(db, "admins", user.uid));
-
-  if (!adminSnapshot.exists()) {
-    return "player";
-  }
-
-  return adminSnapshot.data().role === "co_commissioner"
-    ? "co_commissioner"
-    : "primary_commissioner";
+  return getCloudRoleForUid(requireCurrentUser().uid);
 }
 
 async function requireCommissioner(): Promise<void> {

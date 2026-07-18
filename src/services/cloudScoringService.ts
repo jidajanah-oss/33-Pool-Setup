@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { NFL_2026_TEAMS } from "../data/nfl2026";
 import { requireFirebaseAuth, requireFirestore } from "../lib/firebase";
+import { requireCloudCommissioner } from "./cloudRoleService";
 import { fetchEspnNflWeek } from "./nflLiveScoreService";
 import type {
   CloudNflSyncSummary,
@@ -61,13 +62,7 @@ function requireCurrentUser() {
 }
 
 async function requireCommissioner(): Promise<void> {
-  const db = requireFirestore();
-  const user = requireCurrentUser();
-  const adminSnapshot = await getDoc(doc(db, "admins", user.uid));
-
-  if (!adminSnapshot.exists()) {
-    throw new Error("Commissioner access is required.");
-  }
+  await requireCloudCommissioner();
 }
 
 function asString(value: unknown, fallback = ""): string {

@@ -11,32 +11,22 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function isCommissioner() {
+      return signedIn()
+        && exists(
+          /databases/$(database)/documents/admins/$(request.auth.uid)
+        );
+    }
+
     function isPrimary() {
       return signedIn()
+        && request.auth.token.email == 'jidajanah@gmail.com'
         && exists(
           /databases/$(database)/documents/admins/$(request.auth.uid)
         )
         && get(
           /databases/$(database)/documents/admins/$(request.auth.uid)
         ).data.role == 'primary_commissioner';
-    }
-
-    function isCommissioner() {
-      return isPrimary()
-        || (
-          signedIn()
-          && exists(
-            /databases/$(database)/documents/commissionerTeam/main
-          )
-          && (
-            get(
-              /databases/$(database)/documents/commissionerTeam/main
-            ).data.backup1Uid == request.auth.uid
-            || get(
-              /databases/$(database)/documents/commissionerTeam/main
-            ).data.backup2Uid == request.auth.uid
-          )
-        );
     }
 
     function validBackupSlot(slot) {
@@ -106,15 +96,23 @@ service cloud.firestore {
 
     match /admins/{uid} {
       allow read: if isOwner(uid) || isCommissioner();
-      allow write: if false;
+
+      /*
+       * Only the authenticated Primary Commissioner may create, replace,
+       * or remove backup commissioner records. The Primary cannot modify
+       * or delete their own admin record through the app.
+       *
+       * Package 10.5 intentionally removes fragile field-by-field checks
+       * that were rejecting valid backup assignments.
+       */
+      allow create, update, delete: if isPrimary()
+        && uid != request.auth.uid;
     }
 
-    match /commissionerTeam/{documentId} {
-      allow read: if signedIn();
-      allow create, update: if documentId == 'main' && isPrimary();
-      allow delete: if false;
-    }
-
+    /*
+     * Legacy collection retained as read-only so older empty documents do
+     * not affect the app. Package 10.4 no longer writes here.
+     */
     match /commissionerSlots/{slotId} {
       allow read: if signedIn();
       allow write: if false;

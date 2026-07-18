@@ -10,6 +10,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { requireFirebaseAuth, requireFirestore } from "../lib/firebase";
+import { getCloudRoleForUid } from "./cloudRoleService";
 import type {
   CloudClaim,
   CloudNumberSlot,
@@ -66,26 +67,16 @@ function asIsoString(value: unknown, fallback = ""): string {
 }
 
 async function getCurrentRole(): Promise<CloudRole> {
-  const db = requireFirestore();
-  const uid = requireUserId();
-  const adminSnapshot = await getDoc(doc(db, "admins", uid));
-
-  if (!adminSnapshot.exists()) {
-    return "player";
-  }
-
-  return adminSnapshot.data().role === "co_commissioner"
-    ? "co_commissioner"
-    : "primary_commissioner";
+  return getCloudRoleForUid(requireUserId());
 }
 
 export async function fetchCloudProfile(
   userId: string,
 ): Promise<CloudProfile> {
   const db = requireFirestore();
-  const [profileSnapshot, adminSnapshot] = await Promise.all([
+  const [profileSnapshot, role] = await Promise.all([
     getDoc(doc(db, "users", userId)),
-    getDoc(doc(db, "admins", userId)),
+    getCloudRoleForUid(userId),
   ]);
 
   if (!profileSnapshot.exists()) {
@@ -93,12 +84,6 @@ export async function fetchCloudProfile(
   }
 
   const data = profileSnapshot.data();
-  const role: CloudRole =
-    adminSnapshot.exists() && adminSnapshot.data().role === "co_commissioner"
-      ? "co_commissioner"
-      : adminSnapshot.exists()
-        ? "primary_commissioner"
-        : "player";
 
   return {
     id: userId,
