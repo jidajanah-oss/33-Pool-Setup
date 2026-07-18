@@ -4,7 +4,7 @@ import {
   deleteField,
   doc,
   getDoc,
-  getDocs,
+  getDocsFromServer,
   runTransaction,
   setDoc,
   updateDoc,
@@ -147,16 +147,30 @@ export async function fetchCloudCommissionerTeam(): Promise<{
     CloudCommissionerMember | null
   >;
 }> {
-  await requireCommissioner();
-
+  const currentRole = await requireCommissioner();
+  const currentUser = requireCurrentUser();
   const db = requireFirestore();
-  const [userSnapshots, adminSnapshots, slotSnapshots, inviteSnapshots] =
-    await Promise.all([
-      getDocs(collection(db, "users")),
-      getDocs(collection(db, "admins")),
-      getDocs(collection(db, "commissionerSlots")),
-      getDocs(collection(db, "invites")),
-    ]);
+
+  /*
+   * Force fresh server reads for the commissioner directory. This avoids a
+   * stale admins collection after the Primary record is corrected manually
+   * in the Firebase console.
+   */
+  const [
+    userSnapshots,
+    adminSnapshots,
+    slotSnapshots,
+    inviteSnapshots,
+    currentUserSnapshot,
+    currentAdminSnapshot,
+  ] = await Promise.all([
+    getDocsFromServer(collection(db, "users")),
+    getDocsFromServer(collection(db, "admins")),
+    getDocsFromServer(collection(db, "commissionerSlots")),
+    getDocsFromServer(collection(db, "invites")),
+    getDoc(doc(db, "users", currentUser.uid)),
+    getDoc(doc(db, "admins", currentUser.uid)),
+  ]);
 
   const usersByUid = new Map<string, StoredUser>();
   const adminsByUid = new Map<string, StoredAdmin>();
@@ -191,10 +205,17 @@ export async function fetchCloudCommissionerTeam(): Promise<{
       a.display_name.localeCompare(b.display_name),
     );
 
+  /*
+   * Prefer an explicitly marked Primary Commissioner. Older manually-created
+   * admin records are also accepted when they are not backup records.
+   */
   const primaryEntry = [...adminsByUid.entries()].find(
-    ([, data]) => data.role === "primary_commissioner",
+    ([, data]) =>
+      data.role === "primary_commissioner" ||
+      (data.role !== "co_commissioner" && !asString(data.slot)),
   );
-  const primary = primaryEntry
+
+  let primary = primaryEntry
     ? mapMember(
         primaryEntry[0],
         usersByUid.get(primaryEntry[0]),
@@ -202,6 +223,40 @@ export async function fetchCloudCommissionerTeam(): Promise<{
         "primary",
       )
     : null;
+
+  /*
+   * Jimbo's authenticated admin document is authoritative. If the collection
+   * result does not include it, use the directly-read record so the Primary
+   * card and backup-assignment controls still work.
+   */
+  if (
+    !primary &&
+    currentRole === "primary_commissioner" &&
+    currentAdminSnapshot.exists()
+  ) {
+    const currentAdmin =
+      currentAdminSnapshot.data() as StoredAdmin;
+    const currentUserData: StoredUser = currentUserSnapshot.exists()
+      ? (currentUserSnapshot.data() as StoredUser)
+      : {
+          uid: currentUser.uid,
+          displayName:
+            asString(currentAdmin.displayName) ||
+            currentUser.displayName ||
+            "Primary Commissioner",
+          email:
+            asString(currentAdmin.email) ||
+            currentUser.email ||
+            "",
+        };
+
+    primary = mapMember(
+      currentUser.uid,
+      currentUserData,
+      currentAdmin,
+      "primary",
+    );
+  }
 
   const backups: Record<
     CloudCommissionerSlotId,
