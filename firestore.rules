@@ -98,10 +98,8 @@ service cloud.firestore {
       allow read: if request.auth != null;
 
       allow create, update, delete: if request.auth != null
-        && request.auth.uid == 'jytf6FyhvoSnMEOsaV6OyWPNXfv2'
-        && uid != request.auth.uid;
+        && request.auth.uid == 'jytf6FyhvoSnMEOsaV6OyWPNXfv2';
     }
-
     match /commissionerSlots/{slotId} {
       allow read: if request.auth != null;
       allow write: if false;
