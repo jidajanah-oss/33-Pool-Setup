@@ -4286,3 +4286,94 @@ small,
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Package 13 — Production backup and audit export */
+.cloud-backup-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.cloud-backup-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cloud-backup-actions button {
+  min-height: 48px;
+}
+
+.cloud-backup-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cloud-backup-summary > div {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--ice-100);
+}
+
+.cloud-backup-summary span,
+.cloud-backup-summary strong {
+  display: block;
+}
+
+.cloud-backup-summary span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.cloud-backup-summary strong {
+  margin-top: 5px;
+  color: var(--navy-900);
+  overflow-wrap: anywhere;
+}
+
+.cloud-backup-checksum {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid rgba(8, 119, 91, 0.22);
+  border-radius: 14px;
+  background: rgba(8, 119, 91, 0.06);
+}
+
+.cloud-backup-checksum span,
+.cloud-backup-checksum code {
+  display: block;
+}
+
+.cloud-backup-checksum span {
+  color: var(--success);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.cloud-backup-checksum code {
+  margin-top: 6px;
+  color: var(--ink);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.cloud-backup-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .cloud-backup-actions,
+  .cloud-backup-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cloud-backup-actions button {
+    width: 100%;
+  }
+}

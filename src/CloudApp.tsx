@@ -4,6 +4,7 @@ import { OfficialLogo } from "./components/OfficialLogo";
 import { rules } from "./data/demoData";
 import { CloudAuthGate } from "./features/auth/CloudAuthGate";
 import { useCloudAuth } from "./features/auth/useCloudAuth";
+import { CloudBackupPanel } from "./features/commissioner/CloudBackupPanel";
 import { CloudCommissionerPanel } from "./features/commissioner/CloudCommissionerPanel";
 import { CloudPullResetPanel } from "./features/commissioner/CloudPullResetPanel";
 import { CloudInvitationsAndTeamPanel } from "./features/commissioner/CloudInvitationsAndTeamPanel";
@@ -331,6 +332,15 @@ export default function CloudApp() {
                       payments={payments}
                       scoring={scoring}
                       team={commissionerTeam}
+                    />
+                  )}
+                  {auth.profile && (
+                    <CloudBackupPanel
+                      currentRole={
+                        isPrimaryEmail
+                          ? "primary_commissioner"
+                          : auth.profile.role
+                      }
                     />
                   )}
                   <CloudCommissionerPanel
