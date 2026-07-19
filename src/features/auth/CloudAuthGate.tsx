@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { OfficialLogo } from "../../components/OfficialLogo";
 import type { CloudAuthController } from "./useCloudAuth";
 
 export function CloudAuthGate({
@@ -17,7 +18,7 @@ export function CloudAuthGate({
     return (
       <div className="cloud-auth-shell">
         <section className="cloud-auth-card cloud-auth-loading">
-          <div className="cloud-auth-logo">33</div>
+          <OfficialLogo className="cloud-auth-logo" />
           <h1>Opening 33 Pool</h1>
           <p>Checking your secure Firebase session…</p>
         </section>
@@ -42,7 +43,7 @@ export function CloudAuthGate({
   return (
     <div className="cloud-auth-shell">
       <section className="cloud-auth-card">
-        <div className="cloud-auth-logo">33</div>
+        <OfficialLogo className="cloud-auth-logo" />
         <p className="eyebrow">Secure player access</p>
         <h1>Sign in to 33 Pool</h1>
         <p className="cloud-auth-copy">

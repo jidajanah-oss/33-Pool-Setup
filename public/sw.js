@@ -1,8 +1,9 @@
-const CACHE_NAME = "33-pool-production-v22";
+const CACHE_NAME = "33-pool-production-v23";
 const APP_ROOT = new URL("./", self.location).href;
 const APP_SHELL = [
   APP_ROOT,
   new URL("manifest.webmanifest", APP_ROOT).href,
+  new URL("official-logo.png", APP_ROOT).href,
   new URL("app-icon-192.png", APP_ROOT).href,
   new URL("app-icon-512.png", APP_ROOT).href,
   new URL("maskable-icon-512.png", APP_ROOT).href,

@@ -3839,3 +3839,67 @@ small,
   }
 }
 
+/* Package 11.1 — Official 33 Football Pool logo */
+.official-logo {
+  display: block;
+  max-width: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+.brand-mark {
+  overflow: hidden;
+  padding: 0;
+  border-radius: 14px;
+  background: #000;
+  box-shadow:
+    0 0 0 1px rgba(221, 177, 61, 0.42),
+    0 8px 18px rgba(0, 0, 0, 0.24);
+}
+
+.brand-mark .official-logo {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.brand-mark span {
+  display: none;
+}
+
+.cloud-auth-logo {
+  width: 108px;
+  height: 108px;
+  margin-bottom: 20px;
+  padding: 0;
+  border-radius: 24px;
+  object-fit: cover;
+  background: #000;
+  box-shadow:
+    0 0 0 1px rgba(221, 177, 61, 0.38),
+    0 16px 34px rgba(0, 0, 0, 0.24);
+}
+
+.startup-logo {
+  object-fit: cover;
+  background: #000;
+}
+
+.rules-hero .brand-mark {
+  background: #000;
+}
+
+@media (min-width: 900px) {
+  .desktop-brand .brand-mark {
+    width: 54px;
+    height: 54px;
+    flex: 0 0 54px;
+  }
+}
+
+@media (max-width: 899px) {
+  .mobile-header .brand-mark {
+    width: 40px;
+    height: 40px;
+  }
+}

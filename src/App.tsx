@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import { OfficialLogo } from "./components/OfficialLogo";
 import {
   mySchedule,
   numberSlots,
@@ -262,8 +263,8 @@ function Brand() {
 
 function BrandMark() {
   return (
-    <div className="brand-mark" aria-hidden="true">
-      <span>33</span>
+    <div className="brand-mark">
+      <OfficialLogo decorative />
     </div>
   );
 }

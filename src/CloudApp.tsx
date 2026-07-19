@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import { OfficialLogo } from "./components/OfficialLogo";
 import { rules } from "./data/demoData";
 import { CloudAuthGate } from "./features/auth/CloudAuthGate";
 import { useCloudAuth } from "./features/auth/useCloudAuth";
@@ -173,7 +174,7 @@ export default function CloudApp() {
         <aside className="desktop-sidebar">
           <div className="desktop-brand">
             <div className="brand-mark">
-              <span>33</span>
+              <OfficialLogo decorative />
             </div>
             <div>
               <strong>33 Pool</strong>
@@ -241,8 +242,8 @@ export default function CloudApp() {
               type="button"
             >
               <div className="brand-mark">
-                <span>33</span>
-              </div>
+              <OfficialLogo decorative />
+            </div>
             </button>
             <div>
               <small>33 Pool Setup</small>
@@ -629,8 +630,8 @@ function CloudRules() {
     <div className="screen-stack">
       <section className="rules-hero">
         <div className="brand-mark">
-          <span>33</span>
-        </div>
+              <OfficialLogo decorative />
+            </div>
         <div>
           <small>Official pool rules</small>
           <strong>Final score of 33 wins</strong>

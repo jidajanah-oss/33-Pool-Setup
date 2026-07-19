@@ -1,6 +1,7 @@
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import { OfficialLogo } from "./components/OfficialLogo";
 
 const CloudApp = lazy(() => import("./CloudApp"));
 
@@ -8,7 +9,7 @@ function StartupScreen() {
   return (
     <div className="startup-shell" role="status" aria-live="polite">
       <div className="startup-card">
-        <div className="startup-logo">33</div>
+        <OfficialLogo className="startup-logo" />
         <div className="startup-spinner" aria-hidden="true" />
         <strong>Opening 33 Pool</strong>
         <span>Connecting securely to Firebase…</span>
