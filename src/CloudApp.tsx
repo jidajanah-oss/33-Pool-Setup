@@ -8,6 +8,7 @@ import { CloudCommissionerPanel } from "./features/commissioner/CloudCommissione
 import { CloudPullResetPanel } from "./features/commissioner/CloudPullResetPanel";
 import { CloudInvitationsAndTeamPanel } from "./features/commissioner/CloudInvitationsAndTeamPanel";
 import { CloudPaymentLedgerPanel } from "./features/commissioner/CloudPaymentLedgerPanel";
+import { CloudProductionReadinessPanel } from "./features/commissioner/CloudProductionReadinessPanel";
 import { CloudScoringPanel } from "./features/commissioner/CloudScoringPanel";
 import { ScheduleGeneratorPanel } from "./features/commissioner/ScheduleGeneratorPanel";
 import {
@@ -319,6 +320,19 @@ export default function CloudApp() {
             {screen === "commissioner" &&
               canOpenCommissioner && (
                 <div className="screen-stack commissioner-screen">
+                  {auth.profile && (
+                    <CloudProductionReadinessPanel
+                      cloud={cloud}
+                      currentRole={
+                        isPrimaryEmail
+                          ? "primary_commissioner"
+                          : auth.profile.role
+                      }
+                      payments={payments}
+                      scoring={scoring}
+                      team={commissionerTeam}
+                    />
+                  )}
                   <CloudCommissionerPanel
                     auth={auth}
                     cloud={cloud}
