@@ -4897,3 +4897,296 @@ small,
     width: 100%;
   }
 }
+
+/* Package 17 — Weekly operations command center */
+.weekly-operations-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.generator-status.operations-preseason,
+.generator-status.operations-waiting {
+  color: #765800;
+  background: rgba(221, 177, 61, 0.16);
+}
+
+.generator-status.operations-live {
+  color: #0b4f8a;
+  background: rgba(56, 126, 194, 0.14);
+}
+
+.generator-status.operations-ready,
+.generator-status.operations-complete {
+  color: #08775b;
+  background: rgba(8, 119, 91, 0.13);
+}
+
+.generator-status.operations-attention {
+  color: #9d3030;
+  background: rgba(178, 59, 59, 0.12);
+}
+
+.weekly-operations-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.weekly-operations-hero > div {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(0, 45, 94, 0.14);
+  border-radius: 17px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(0, 45, 94, 0.06),
+      rgba(221, 177, 61, 0.06)
+    );
+}
+
+.weekly-operations-hero small,
+.weekly-operations-hero strong {
+  display: block;
+}
+
+.weekly-operations-hero small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.weekly-operations-hero strong {
+  margin-top: 5px;
+  color: var(--navy-900);
+  font-size: 1.2rem;
+}
+
+.weekly-operations-hero p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.weekly-operations-week {
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.weekly-operations-week > span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.weekly-operations-week > strong {
+  margin: 0;
+  color: var(--navy-900);
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.weekly-operations-week > small {
+  margin-top: 7px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.weekly-operations-next {
+  padding: 14px 16px;
+  border-left: 5px solid var(--gold-500);
+  border-radius: 12px;
+  background: rgba(221, 177, 61, 0.08);
+}
+
+.weekly-operations-next span,
+.weekly-operations-next strong {
+  display: block;
+}
+
+.weekly-operations-next span {
+  color: #765800;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.weekly-operations-next strong {
+  margin-top: 5px;
+  color: var(--navy-900);
+  overflow-wrap: anywhere;
+}
+
+.weekly-operations-checks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.weekly-operations-checks article {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.weekly-operations-checks article > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 25px;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 900;
+}
+
+.weekly-operations-checks article.passed > span {
+  background: #08775b;
+}
+
+.weekly-operations-checks article.attention > span {
+  background: #b23b3b;
+}
+
+.weekly-operations-checks article.informational > span {
+  background: #387ec2;
+}
+
+.weekly-operations-checks strong,
+.weekly-operations-checks small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.weekly-operations-checks strong {
+  color: var(--navy-900);
+}
+
+.weekly-operations-checks small {
+  margin-top: 3px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.weekly-game-progress,
+.weekly-financial-progress {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.weekly-game-progress > div,
+.weekly-financial-progress > div {
+  min-width: 0;
+  padding: 11px;
+  border-radius: 13px;
+  background: var(--ice-100);
+  text-align: center;
+}
+
+.weekly-game-progress span,
+.weekly-game-progress strong,
+.weekly-financial-progress span,
+.weekly-financial-progress strong {
+  display: block;
+}
+
+.weekly-game-progress span,
+.weekly-financial-progress span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.weekly-game-progress strong,
+.weekly-financial-progress strong {
+  margin-top: 4px;
+  color: var(--navy-900);
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.weekly-sync-detail {
+  display: grid;
+  grid-template-columns: 0.8fr 0.8fr 1.4fr;
+  gap: 10px;
+}
+
+.weekly-sync-detail > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
+}
+
+.weekly-sync-detail span,
+.weekly-sync-detail strong {
+  display: block;
+}
+
+.weekly-sync-detail span {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.weekly-sync-detail strong {
+  margin-top: 4px;
+  color: var(--navy-900);
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.weekly-operations-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.weekly-operations-actions button {
+  min-height: 48px;
+  white-space: normal;
+}
+
+@media (max-width: 1000px) {
+  .weekly-operations-checks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .weekly-game-progress,
+  .weekly-financial-progress {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .weekly-operations-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .weekly-operations-hero,
+  .weekly-operations-checks,
+  .weekly-sync-detail,
+  .weekly-operations-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .weekly-game-progress,
+  .weekly-financial-progress {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .weekly-operations-actions button {
+    width: 100%;
+  }
+}

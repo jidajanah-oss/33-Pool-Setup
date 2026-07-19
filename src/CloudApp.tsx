@@ -13,6 +13,7 @@ import { CloudPaymentLedgerPanel } from "./features/commissioner/CloudPaymentLed
 import { CloudProductionReadinessPanel } from "./features/commissioner/CloudProductionReadinessPanel";
 import { CloudScoringPanel } from "./features/commissioner/CloudScoringPanel";
 import { CloudSeasonLaunchPanel } from "./features/commissioner/CloudSeasonLaunchPanel";
+import { CloudWeeklyOperationsPanel } from "./features/commissioner/CloudWeeklyOperationsPanel";
 import { ScheduleGeneratorPanel } from "./features/commissioner/ScheduleGeneratorPanel";
 import {
   CloudMySchedule,
@@ -344,6 +345,19 @@ export default function CloudApp() {
                           ? "primary_commissioner"
                           : auth.profile.role
                       }
+                      scoring={scoring}
+                      team={commissionerTeam}
+                    />
+                  )}
+                  {auth.profile && (
+                    <CloudWeeklyOperationsPanel
+                      cloud={cloud}
+                      currentRole={
+                        isPrimaryEmail
+                          ? "primary_commissioner"
+                          : auth.profile.role
+                      }
+                      payments={payments}
                       scoring={scoring}
                       team={commissionerTeam}
                     />
