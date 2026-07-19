@@ -258,7 +258,7 @@ service cloud.firestore {
 
     match /weeklyResults/{weekId} {
       allow read: if signedIn();
-      allow create, update, delete: if isCommissioner();
+      allow create, update, delete: if isPrimary();
     }
 
     match /weeklyPublic/{weekId} {
@@ -268,7 +268,11 @@ service cloud.firestore {
 
     match /winners/{winnerId} {
       allow read: if signedIn();
-      allow write: if isCommissioner();
+      allow write: if isPrimary();
+    }
+
+    match /weekResolutionArchives/{archiveId} {
+      allow read, write: if isPrimary();
     }
 
     match /payments/{uid} {

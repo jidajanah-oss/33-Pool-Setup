@@ -4457,3 +4457,198 @@ small,
     width: 100%;
   }
 }
+
+/* Package 15 — Finalization and winner safeguards */
+.week-finalization-guard {
+  display: grid;
+  gap: 14px;
+  margin-top: 4px;
+  padding: 16px;
+  border: 1px solid rgba(0, 45, 94, 0.16);
+  border-radius: 18px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(0, 45, 94, 0.055),
+      rgba(221, 177, 61, 0.055)
+    );
+}
+
+.week-finalization-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.week-finalization-heading small,
+.week-finalization-heading strong {
+  display: block;
+}
+
+.week-finalization-heading small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.week-finalization-heading strong {
+  margin-top: 4px;
+  color: var(--navy-900);
+  font-size: 1.05rem;
+}
+
+.week-finalization-heading > span {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.week-finalization-heading > span.ready {
+  color: #08775b;
+  background: rgba(8, 119, 91, 0.12);
+}
+
+.week-finalization-heading > span.blocked {
+  color: #a03434;
+  background: rgba(160, 52, 52, 0.1);
+}
+
+.week-finalization-checks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.week-finalization-checks article {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.week-finalization-checks article > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-weight: 900;
+}
+
+.week-finalization-checks article.passed > span {
+  color: #fff;
+  background: #08775b;
+}
+
+.week-finalization-checks article.failed > span {
+  color: #fff;
+  background: #b23b3b;
+}
+
+.week-finalization-checks strong,
+.week-finalization-checks small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.week-finalization-checks strong {
+  color: var(--navy-900);
+}
+
+.week-finalization-checks small {
+  margin-top: 3px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.week-finalization-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.week-finalization-summary > div {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 13px;
+  background: var(--ice-100);
+}
+
+.week-finalization-summary span,
+.week-finalization-summary strong {
+  display: block;
+}
+
+.week-finalization-summary span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.week-finalization-summary strong {
+  margin-top: 4px;
+  color: var(--navy-900);
+  overflow-wrap: anywhere;
+}
+
+.week-confirmation-field {
+  display: grid;
+  gap: 8px;
+}
+
+.week-confirmation-field > span {
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+
+.week-confirmation-field input {
+  width: 100%;
+  min-height: 48px;
+  border: 2px solid rgba(0, 45, 94, 0.22);
+  border-radius: 13px;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.week-confirmation-field input:focus {
+  outline: 3px solid rgba(56, 126, 194, 0.18);
+  border-color: #387ec2;
+}
+
+.week-confirmation-field.reopen input {
+  border-color: rgba(178, 59, 59, 0.34);
+}
+
+.week-finalization-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .week-finalization-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .week-finalization-heading > span {
+    align-self: flex-start;
+  }
+
+  .week-finalization-checks,
+  .week-finalization-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

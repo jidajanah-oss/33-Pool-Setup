@@ -3,6 +3,7 @@ import { NFL_2026_TEAMS } from "../../data/nfl2026";
 import { calculateCloudResolutionPreview } from "../../services/cloudScoringService";
 import type {
   CloudResolutionPreview,
+  CloudRole,
   CloudScoringState,
   CloudTeamScore,
 } from "../../types/cloud";
@@ -47,9 +48,11 @@ function description(preview: CloudResolutionPreview): string {
 export function CloudScoringPanel({
   scoring,
   onPoolRefresh,
+  currentRole,
 }: {
   scoring: CloudScoringState;
   onPoolRefresh: () => Promise<void>;
+  currentRole: CloudRole;
 }) {
   const [draftScores, setDraftScores] = useState<CloudTeamScore[]>(
     scoring.scores,
@@ -57,6 +60,9 @@ export function CloudScoringPanel({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [finalizePhrase, setFinalizePhrase] = useState("");
+  const [reopenPhrase, setReopenPhrase] = useState("");
+  const isPrimary = currentRole === "primary_commissioner";
 
   useEffect(() => {
     setDraftScores(scoring.scores);
@@ -77,6 +83,31 @@ export function CloudScoringPanel({
       scoring.selectedWeek,
     ],
   );
+
+  const playingScores = draftScores.filter(
+    (score) => score.status !== "bye",
+  );
+  const finalScoreCount = playingScores.filter(
+    (score) => score.status === "final",
+  ).length;
+  const manualOverrideCount = playingScores.filter(
+    (score) => score.source === "manual",
+  ).length;
+  const exceptionCount = playingScores.filter(
+    (score) =>
+      score.status === "postponed" ||
+      score.status === "canceled",
+  ).length;
+  const finalizeCommand =
+    `FINALIZE WEEK ${scoring.selectedWeek}`;
+  const reopenCommand =
+    `REOPEN WEEK ${scoring.selectedWeek}`;
+  const finalizeAuthorized =
+    isPrimary &&
+    finalizePhrase.trim().toUpperCase() === finalizeCommand;
+  const reopenAuthorized =
+    isPrimary &&
+    reopenPhrase.trim().toUpperCase() === reopenCommand;
 
   const changeScore = (teamCode: string, value: string) => {
     const nextScore =
@@ -151,11 +182,8 @@ export function CloudScoringPanel({
     );
 
   const finalize = async () => {
-    if (
-      !window.confirm(
-        `Finalize Week ${scoring.selectedWeek}? This calculates the official pot, winner records, and next-week carryover.`,
-      )
-    ) {
+    if (!finalizeAuthorized) {
+      setError(`Type ${finalizeCommand} exactly before finalizing.`);
       return;
     }
 
@@ -165,25 +193,24 @@ export function CloudScoringPanel({
         draftScores,
       );
       await scoring.finalizeWeek(scoring.selectedWeek);
+      setFinalizePhrase("");
       await onPoolRefresh();
-    }, `Week ${scoring.selectedWeek} finalized.`);
+    }, `Week ${scoring.selectedWeek} finalized with a permanent audit snapshot.`);
   };
 
   const reopen = async () => {
-    if (
-      !window.confirm(
-        `Reopen Week ${scoring.selectedWeek}? Winner earnings will be reversed until the week is finalized again.`,
-      )
-    ) {
+    if (!reopenAuthorized) {
+      setError(`Type ${reopenCommand} exactly before reopening.`);
       return;
     }
 
     await run(
       async () => {
         await scoring.reopenWeek(scoring.selectedWeek);
+        setReopenPhrase("");
         await onPoolRefresh();
       },
-      `Week ${scoring.selectedWeek} reopened.`,
+      `Week ${scoring.selectedWeek} reopened. The prior result remains preserved in the audit archive.`,
     );
   };
 
@@ -191,11 +218,11 @@ export function CloudScoringPanel({
     <section className="section-card cloud-scoring-panel">
       <div className="generator-heading">
         <div>
-          <p className="eyebrow">Package 8</p>
-          <h2>Automatic NFL Scores and Pot Resolution</h2>
+          <p className="eyebrow">Package 15</p>
+          <h2>Final Week Controls and Winner Safeguards</h2>
           <p>
-            Live schedule and scores refresh automatically while the app is open.
-            Manual commissioner entry remains available as an override.
+            Commissioners may prepare and sync scores. Only the Primary Commissioner
+            can finalize, reopen, or mark a winner paid.
           </p>
         </div>
         <span
@@ -376,6 +403,131 @@ export function CloudScoringPanel({
         )}
       </div>
 
+      <div className="week-finalization-guard">
+        <div className="week-finalization-heading">
+          <div>
+            <small>Official resolution safeguard</small>
+            <strong>
+              Week {scoring.selectedWeek} finalization checklist
+            </strong>
+          </div>
+          <span className={preview.can_finalize ? "ready" : "blocked"}>
+            {preview.can_finalize ? "Scores ready" : "Blocked"}
+          </span>
+        </div>
+
+        <div className="week-finalization-checks">
+          <article className={
+            scoring.selectedWeek === scoring.currentWeek
+              ? "passed"
+              : "failed"
+          }>
+            <span>
+              {scoring.selectedWeek === scoring.currentWeek ? "✓" : "!"}
+            </span>
+            <div>
+              <strong>Current pool week</strong>
+              <small>
+                Pool is currently on Week {scoring.currentWeek}.
+              </small>
+            </div>
+          </article>
+          <article className={preview.all_players_claimed ? "passed" : "failed"}>
+            <span>{preview.all_players_claimed ? "✓" : "!"}</span>
+            <div>
+              <strong>All schedule numbers claimed</strong>
+              <small>{preview.claimed_count} of 32 claims found.</small>
+            </div>
+          </article>
+          <article className={preview.complete_scores ? "passed" : "failed"}>
+            <span>{preview.complete_scores ? "✓" : "!"}</span>
+            <div>
+              <strong>Every playing team is final</strong>
+              <small>
+                {finalScoreCount} final team scores · {exceptionCount} exceptions.
+              </small>
+            </div>
+          </article>
+          <article className={isPrimary ? "passed" : "failed"}>
+            <span>{isPrimary ? "✓" : "!"}</span>
+            <div>
+              <strong>Primary Commissioner approval</strong>
+              <small>
+                {isPrimary
+                  ? "Jimbo is authorized for irreversible controls."
+                  : "Backup commissioners can prepare scores but cannot finalize."}
+              </small>
+            </div>
+          </article>
+        </div>
+
+        <div className="week-finalization-summary">
+          <div>
+            <span>Resolution</span>
+            <strong>
+              {preview.resolution_type === "exact_33"
+                ? "Exact 33"
+                : preview.resolution_type === "closest_33"
+                  ? "Week 18 closest to 33"
+                  : "Carryover"}
+            </strong>
+          </div>
+          <div>
+            <span>Winners</span>
+            <strong>{preview.winners.length}</strong>
+          </div>
+          <div>
+            <span>Official pot</span>
+            <strong>{dollars(preview.total_pot_cents)}</strong>
+          </div>
+          <div>
+            <span>Manual overrides</span>
+            <strong>{manualOverrideCount}</strong>
+          </div>
+        </div>
+
+        {!scoring.result && (
+          <label className="week-confirmation-field">
+            <span>
+              Type <strong>{finalizeCommand}</strong> to unlock finalization.
+            </span>
+            <input
+              autoComplete="off"
+              disabled={!isPrimary || busy}
+              onChange={(event) =>
+                setFinalizePhrase(event.target.value)
+              }
+              placeholder={finalizeCommand}
+              type="text"
+              value={finalizePhrase}
+            />
+          </label>
+        )}
+
+        {scoring.result && (
+          <label className="week-confirmation-field reopen">
+            <span>
+              Type <strong>{reopenCommand}</strong> to reverse the latest result.
+            </span>
+            <input
+              autoComplete="off"
+              disabled={!isPrimary || busy}
+              onChange={(event) =>
+                setReopenPhrase(event.target.value)
+              }
+              placeholder={reopenCommand}
+              type="text"
+              value={reopenPhrase}
+            />
+          </label>
+        )}
+
+        <p className="week-finalization-note">
+          Finalization stores a permanent snapshot of scores, schedule
+          assignments, pot calculations, winners, and a resolution fingerprint.
+        </p>
+      </div>
+
       <div className="cloud-score-actions">
         {!scoring.result && (
           <>
@@ -390,6 +542,8 @@ export function CloudScoringPanel({
               className="generator-primary"
               disabled={
                 busy ||
+                !isPrimary ||
+                !finalizeAuthorized ||
                 scoring.selectedWeek !== scoring.currentWeek ||
                 !preview.can_finalize
               }
@@ -404,7 +558,7 @@ export function CloudScoringPanel({
         {scoring.result && (
           <button
             className="scoring-reopen-button"
-            disabled={busy}
+            disabled={busy || !isPrimary || !reopenAuthorized}
             onClick={() => void reopen()}
             type="button"
           >
@@ -439,14 +593,24 @@ export function CloudScoringPanel({
               </div>
               <button
                 disabled={
-                  busy || winner.payout_status === "paid"
+                  busy ||
+                  !isPrimary ||
+                  winner.payout_status === "paid"
                 }
-                onClick={() =>
+                onClick={() => {
+                  const approved = window.confirm(
+                    `Confirm ${dollars(winner.payout_cents)} was actually paid to ${winner.player_name} for Week ${winner.week}.`,
+                  );
+
+                  if (!approved) {
+                    return;
+                  }
+
                   void run(
                     () => scoring.markWinnerPaid(winner.id),
                     `${winner.player_name}'s prize marked paid.`,
-                  )
-                }
+                  );
+                }}
                 type="button"
               >
                 {winner.payout_status === "paid"
@@ -455,6 +619,13 @@ export function CloudScoringPanel({
               </button>
             </article>
           ))}
+        </div>
+      )}
+
+      {!isPrimary && (
+        <div className="generator-message">
+          Backup commissioners may sync and save score corrections.
+          Finalize, reopen, and prize-paid controls require Jimbo.
         </div>
       )}
 

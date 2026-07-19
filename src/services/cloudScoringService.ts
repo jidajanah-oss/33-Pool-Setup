@@ -10,7 +10,10 @@ import {
 } from "firebase/firestore";
 import { NFL_2026_TEAMS } from "../data/nfl2026";
 import { requireFirebaseAuth, requireFirestore } from "../lib/firebase";
-import { requireCloudCommissioner } from "./cloudRoleService";
+import {
+  requireCloudCommissioner,
+  requireCloudPrimary,
+} from "./cloudRoleService";
 import { fetchEspnNflWeek } from "./nflLiveScoreService";
 import type {
   CloudNflSyncSummary,
@@ -688,6 +691,90 @@ export async function syncCloudNflScores(
   return provider.summary;
 }
 
+
+function stableResolutionFingerprint(
+  week: number,
+  scores: readonly CloudTeamScore[],
+  assignments: readonly CloudScoringAssignment[],
+  preview: CloudResolutionPreview,
+): string {
+  const input = JSON.stringify({
+    week,
+    scores: [...scores]
+      .sort((left, right) =>
+        left.team_code.localeCompare(right.team_code),
+      )
+      .map((score) => ({
+        team: score.team_code,
+        status: score.status,
+        score: score.score,
+        source: score.source,
+      })),
+    assignments: [...assignments]
+      .sort(
+        (left, right) =>
+          left.schedule_number - right.schedule_number,
+      )
+      .map((assignment) => ({
+        line: assignment.schedule_number,
+        uid: assignment.uid,
+        team: assignment.team_code,
+      })),
+    resolution: {
+      type: preview.resolution_type,
+      pot: preview.total_pot_cents,
+      carryover: preview.carryover_out_cents,
+      winners: preview.winners.map((winner) => ({
+        line: winner.schedule_number,
+        team: winner.team_code,
+        score: winner.final_score,
+        payout: winner.payout_cents,
+      })),
+    },
+  });
+
+  let hash = 2166136261;
+
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return `W${week}-${(hash >>> 0)
+    .toString(16)
+    .padStart(8, "0")
+    .toUpperCase()}`;
+}
+
+function scoreArchiveRows(
+  scores: readonly CloudTeamScore[],
+) {
+  return scores.map((score) => ({
+    teamCode: score.team_code,
+    teamName: score.team_name,
+    status: score.status,
+    score: score.score,
+    source: score.source,
+    eventId: score.event_id,
+    kickoffAt: score.kickoff_at,
+    statusDetail: score.status_detail,
+    syncedAt: score.synced_at,
+  }));
+}
+
+function assignmentArchiveRows(
+  assignments: readonly CloudScoringAssignment[],
+) {
+  return assignments.map((assignment) => ({
+    scheduleNumber: assignment.schedule_number,
+    uid: assignment.uid,
+    playerName: assignment.player_name,
+    teamCode: assignment.team_code,
+    teamName: assignment.team_name,
+    isBye: assignment.is_bye,
+  }));
+}
+
 async function commissionerName(uid: string): Promise<string> {
   const db = requireFirestore();
   const profileSnapshot = await getDoc(doc(db, "users", uid));
@@ -698,7 +785,7 @@ async function commissionerName(uid: string): Promise<string> {
 }
 
 export async function finalizeCloudWeek(week: number): Promise<void> {
-  await requireCommissioner();
+  await requireCloudPrimary();
   normalizeWeek(week);
   const db = requireFirestore();
   const user = requireCurrentUser();
@@ -743,6 +830,9 @@ export async function finalizeCloudWeek(week: number): Promise<void> {
   const previousResultRef =
     week > 1 ? doc(db, "weeklyResults", String(week - 1)) : null;
   const auditRef = doc(collection(db, "audit"));
+  const resolutionArchiveRef = doc(
+    collection(db, "weekResolutionArchives"),
+  );
 
   await runTransaction(db, async (transaction) => {
     const baseReads = [
@@ -836,6 +926,14 @@ export async function finalizeCloudWeek(week: number): Promise<void> {
       throw new Error(preview.blocking_reasons.join(" "));
     }
 
+    const resolutionFingerprint =
+      stableResolutionFingerprint(
+        week,
+        scores,
+        assignments,
+        preview,
+      );
+
     const winnerPaymentReads = await Promise.all(
       preview.winners.map((winner) =>
         transaction.get(doc(db, "payments", winner.uid ?? "missing")),
@@ -859,6 +957,39 @@ export async function finalizeCloudWeek(week: number): Promise<void> {
       finalizedAt: now,
       finalizedByUid: user.uid,
       finalizedByName: name,
+      resolutionFingerprint,
+      resolutionArchiveId: resolutionArchiveRef.id,
+    });
+
+    transaction.set(resolutionArchiveRef, {
+      actionType: "week_finalized_snapshot",
+      week,
+      resolutionFingerprint,
+      scores: scoreArchiveRows(scores),
+      assignments: assignmentArchiveRows(assignments),
+      preview: {
+        completeScores: preview.complete_scores,
+        claimedCount: preview.claimed_count,
+        weeklyAdditionCents: preview.weekly_addition_cents,
+        carryoverInCents: preview.carryover_in_cents,
+        totalPotCents: preview.total_pot_cents,
+        resolutionType: preview.resolution_type,
+        qualifyingTeamCodes: preview.qualifying_team_codes,
+        winners: preview.winners.map((winner) => ({
+          uid: winner.uid,
+          playerName: winner.player_name,
+          scheduleNumber: winner.schedule_number,
+          teamCode: winner.team_code,
+          teamName: winner.team_name,
+          finalScore: winner.final_score,
+          distanceFrom33: winner.distance_from_33,
+          payoutCents: winner.payout_cents,
+        })),
+        carryoverOutCents: preview.carryover_out_cents,
+      },
+      commissionerUid: user.uid,
+      commissionerName: name,
+      createdAt: now,
     });
 
     preview.winners.forEach((winner, index) => {
@@ -993,6 +1124,8 @@ export async function finalizeCloudWeek(week: number): Promise<void> {
       resolutionType: preview.resolution_type,
       totalPotCents: preview.total_pot_cents,
       winnerCount: preview.winners.length,
+      resolutionFingerprint,
+      resolutionArchiveId: resolutionArchiveRef.id,
       commissionerUid: user.uid,
       commissionerName: name,
       createdAt: now,
@@ -1001,7 +1134,7 @@ export async function finalizeCloudWeek(week: number): Promise<void> {
 }
 
 export async function reopenCloudWeek(week: number): Promise<void> {
-  await requireCommissioner();
+  await requireCloudPrimary();
   normalizeWeek(week);
   const db = requireFirestore();
   const user = requireCurrentUser();
@@ -1023,6 +1156,9 @@ export async function reopenCloudWeek(week: number): Promise<void> {
   const resultRef = doc(db, "weeklyResults", String(week));
   const scoreRef = doc(db, "teamScores", String(week));
   const auditRef = doc(collection(db, "audit"));
+  const resolutionArchiveRef = doc(
+    collection(db, "weekResolutionArchives"),
+  );
 
   await runTransaction(db, async (transaction) => {
     const [configSnapshot, resultSnapshot, scoreSnapshot] =
@@ -1082,6 +1218,29 @@ export async function reopenCloudWeek(week: number): Promise<void> {
       transaction.delete(doc(db, "winners", winner.id));
     });
 
+    transaction.set(resolutionArchiveRef, {
+      actionType: "week_reopened_snapshot",
+      week,
+      priorResult: resultSnapshot.data(),
+      priorWinners: winners.map((winner) => ({
+        id: winner.id,
+        uid: winner.uid,
+        playerName: winner.player_name,
+        scheduleNumber: winner.schedule_number,
+        teamCode: winner.team_code,
+        teamName: winner.team_name,
+        finalScore: winner.final_score,
+        payoutCents: winner.payout_cents,
+        payoutStatus: winner.payout_status,
+      })),
+      priorScores: scoreSnapshot.exists()
+        ? scoreSnapshot.data()
+        : null,
+      commissionerUid: user.uid,
+      commissionerName: name,
+      createdAt: now,
+    });
+
     transaction.delete(resultRef);
 
     if (scoreSnapshot.exists()) {
@@ -1119,6 +1278,7 @@ export async function reopenCloudWeek(week: number): Promise<void> {
     transaction.set(auditRef, {
       actionType: "week_reopened",
       week,
+      resolutionArchiveId: resolutionArchiveRef.id,
       commissionerUid: user.uid,
       commissionerName: name,
       createdAt: now,
@@ -1129,7 +1289,7 @@ export async function reopenCloudWeek(week: number): Promise<void> {
 export async function markCloudWinnerPaid(
   winnerId: string,
 ): Promise<void> {
-  await requireCommissioner();
+  await requireCloudPrimary();
   const db = requireFirestore();
   const user = requireCurrentUser();
   const name = await commissionerName(user.uid);

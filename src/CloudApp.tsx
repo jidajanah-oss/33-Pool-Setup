@@ -370,6 +370,11 @@ export default function CloudApp() {
                     scoring={scoring}
                   />
                   <CloudScoringPanel
+                    currentRole={
+                      isPrimaryEmail
+                        ? "primary_commissioner"
+                        : auth.profile?.role ?? "player"
+                    }
                     onPoolRefresh={cloud.refresh}
                     scoring={scoring}
                   />
