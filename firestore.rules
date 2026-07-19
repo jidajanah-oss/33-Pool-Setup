@@ -174,7 +174,28 @@ service cloud.firestore {
 
     match /poolConfig/{documentId} {
       allow read: if signedIn();
-      allow write: if isCommissioner();
+
+      allow create: if isCommissioner();
+
+      allow update: if isCommissioner()
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'seasonLaunched',
+            'seasonLaunchedAt',
+            'seasonLaunchedByUid',
+            'seasonLaunchedByEmail',
+            'seasonLaunchedByName',
+            'seasonLaunchId',
+            'weekOneLocked'
+          ])
+          || isPrimary()
+        );
+
+      allow delete: if isPrimary();
+    }
+
+    match /seasonLaunches/{seasonId} {
+      allow read, write: if isPrimary();
     }
 
     match /claims/{lineId} {

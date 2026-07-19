@@ -4652,3 +4652,248 @@ small,
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Package 16 — Season launch controls */
+.season-launch-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.season-launch-phase-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.season-launch-phase-grid article {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--ice-100);
+  opacity: 0.72;
+}
+
+.season-launch-phase-grid article.active,
+.season-launch-phase-grid article.complete {
+  opacity: 1;
+}
+
+.season-launch-phase-grid article.active {
+  border-color: rgba(221, 177, 61, 0.58);
+  box-shadow: inset 0 0 0 1px rgba(221, 177, 61, 0.2);
+}
+
+.season-launch-phase-grid article > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--navy-900);
+  font-weight: 900;
+}
+
+.season-launch-phase-grid article.complete > span {
+  background: #08775b;
+}
+
+.season-launch-phase-grid strong,
+.season-launch-phase-grid small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.season-launch-phase-grid strong {
+  color: var(--navy-900);
+}
+
+.season-launch-phase-grid small {
+  margin-top: 4px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.season-enrollment-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.season-enrollment-actions button {
+  min-height: 48px;
+}
+
+.season-launch-check-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.season-launch-check-grid article {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.season-launch-check-grid article > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 900;
+}
+
+.season-launch-check-grid article.passed > span {
+  background: #08775b;
+}
+
+.season-launch-check-grid article.waiting > span {
+  background: #b23b3b;
+}
+
+.season-launch-check-grid strong,
+.season-launch-check-grid small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.season-launch-check-grid strong {
+  color: var(--navy-900);
+}
+
+.season-launch-check-grid small {
+  margin-top: 3px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.season-launch-confirmation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.35fr);
+  align-items: end;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid rgba(221, 177, 61, 0.5);
+  border-radius: 16px;
+  background: rgba(221, 177, 61, 0.07);
+}
+
+.season-launch-confirmation label {
+  display: grid;
+  gap: 8px;
+}
+
+.season-launch-confirmation label > span {
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+
+.season-launch-confirmation input {
+  width: 100%;
+  min-height: 48px;
+  border: 2px solid rgba(0, 45, 94, 0.24);
+  border-radius: 13px;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.season-launch-confirmation button {
+  min-height: 48px;
+}
+
+.season-launch-live-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.season-launch-live-summary > div {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid rgba(8, 119, 91, 0.25);
+  border-radius: 14px;
+  background: rgba(8, 119, 91, 0.07);
+}
+
+.season-launch-live-summary span,
+.season-launch-live-summary strong {
+  display: block;
+}
+
+.season-launch-live-summary span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.season-launch-live-summary strong {
+  margin-top: 5px;
+  color: #08775b;
+  overflow-wrap: anywhere;
+}
+
+.season-launch-record {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 13px;
+  background: var(--ice-100);
+}
+
+.season-launch-record span,
+.season-launch-record code {
+  display: block;
+}
+
+.season-launch-record span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.season-launch-record code {
+  margin-top: 5px;
+  color: var(--navy-900);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.season-launch-warning {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 4px solid #b23b3b;
+  border-radius: 10px;
+  color: #7a2929;
+  background: rgba(178, 59, 59, 0.07);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .season-launch-phase-grid,
+  .season-enrollment-actions,
+  .season-launch-check-grid,
+  .season-launch-confirmation,
+  .season-launch-live-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .season-enrollment-actions button,
+  .season-launch-confirmation button {
+    width: 100%;
+  }
+}

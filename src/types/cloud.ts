@@ -20,6 +20,11 @@ export interface CloudPoolStatus {
   schedule_id: string | null;
   schedule_generated_at: string | null;
   schedule_locked_at: string | null;
+  season_launched: boolean;
+  season_launched_at: string | null;
+  season_launched_by_name: string | null;
+  season_launch_id: string | null;
+  week_one_locked: boolean;
 }
 
 export interface CloudNumberSlot {

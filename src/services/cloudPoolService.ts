@@ -12,6 +12,7 @@ import {
 import { requireFirebaseAuth, requireFirestore } from "../lib/firebase";
 import {
   getCloudRoleForUid,
+  requireCloudCommissioner,
   requireCloudPrimary,
 } from "./cloudRoleService";
 import type {
@@ -48,6 +49,16 @@ export interface CloudPullResetResult {
   previous_schedule_id: string | null;
   previous_claim_count: number;
   reset_at: string;
+}
+
+export interface CloudSeasonLaunchResult {
+  launch_id: string;
+  season: number;
+  week: number;
+  schedule_id: string;
+  claim_count: number;
+  nfl_team_count: number;
+  launched_at: string;
 }
 
 function requireUserId(): string {
@@ -121,6 +132,11 @@ export async function fetchPoolStatus(): Promise<CloudPoolStatus> {
       schedule_id: null,
       schedule_generated_at: null,
       schedule_locked_at: null,
+      season_launched: false,
+      season_launched_at: null,
+      season_launched_by_name: null,
+      season_launch_id: null,
+      week_one_locked: false,
     };
   }
 
@@ -145,6 +161,20 @@ export async function fetchPoolStatus(): Promise<CloudPoolStatus> {
       typeof data.scheduleLockedAt === "string"
         ? data.scheduleLockedAt
         : null,
+    season_launched: data.seasonLaunched === true,
+    season_launched_at:
+      typeof data.seasonLaunchedAt === "string"
+        ? data.seasonLaunchedAt
+        : null,
+    season_launched_by_name:
+      typeof data.seasonLaunchedByName === "string"
+        ? data.seasonLaunchedByName
+        : null,
+    season_launch_id:
+      typeof data.seasonLaunchId === "string"
+        ? data.seasonLaunchId
+        : null,
+    week_one_locked: data.weekOneLocked === true,
   };
 }
 
@@ -517,6 +547,13 @@ export async function publishCloudSchedule(
     scheduleId: schedule.id,
     scheduleGeneratedAt: schedule.generatedAt,
     scheduleLockedAt: schedule.lockedAt,
+    seasonLaunched: false,
+    seasonLaunchedAt: null,
+    seasonLaunchedByUid: null,
+    seasonLaunchedByEmail: null,
+    seasonLaunchedByName: null,
+    seasonLaunchId: null,
+    weekOneLocked: false,
     updatedAt: new Date().toISOString(),
   });
 
@@ -526,9 +563,31 @@ export async function publishCloudSchedule(
 export async function setCloudEnrollmentOpen(
   open: boolean,
 ): Promise<void> {
-  const db = requireFirestore();
+  await requireCloudCommissioner();
 
-  await updateDoc(doc(db, "poolConfig", "main"), {
+  const db = requireFirestore();
+  const configRef = doc(db, "poolConfig", "main");
+  const configSnapshot = await getDoc(configRef);
+
+  if (!configSnapshot.exists()) {
+    throw new Error("The active pool configuration is missing.");
+  }
+
+  const config = configSnapshot.data();
+
+  if (config.schedulesLocked !== true) {
+    throw new Error(
+      "Publish and lock the official schedule before changing number selection.",
+    );
+  }
+
+  if (open && config.seasonLaunched === true) {
+    throw new Error(
+      "The 2026 season is already launched. Number selection is permanently closed.",
+    );
+  }
+
+  await updateDoc(configRef, {
     numberSelectionOpen: open,
     updatedAt: new Date().toISOString(),
   });
@@ -537,9 +596,23 @@ export async function setCloudEnrollmentOpen(
 export async function releaseCloudNumber(
   scheduleNumber: number,
 ): Promise<void> {
+  await requireCloudCommissioner();
+
   const db = requireFirestore();
+  const [configSnapshot, claimSnapshot] = await Promise.all([
+    getDoc(doc(db, "poolConfig", "main")),
+    getDoc(doc(db, "claims", String(scheduleNumber))),
+  ]);
   const claimRef = doc(db, "claims", String(scheduleNumber));
-  const claimSnapshot = await getDoc(claimRef);
+
+  if (
+    configSnapshot.exists() &&
+    configSnapshot.data().seasonLaunched === true
+  ) {
+    throw new Error(
+      "The 2026 season is launched. Schedule claims are frozen for Week 1.",
+    );
+  }
 
   if (!claimSnapshot.exists()) {
     return;
@@ -556,6 +629,275 @@ export async function releaseCloudNumber(
   batch.delete(claimRef);
   batch.delete(doc(db, "userClaims", uid));
   await batch.commit();
+}
+
+export async function launchCloud2026Season(
+  confirmation: string,
+): Promise<CloudSeasonLaunchResult> {
+  await requireCloudPrimary();
+
+  if (confirmation.trim().toUpperCase() !== "LAUNCH 2026") {
+    throw new Error('Type "LAUNCH 2026" exactly to launch the season.');
+  }
+
+  const db = requireFirestore();
+  const auth = requireFirebaseAuth();
+  const user = auth.currentUser;
+
+  if (!user) {
+    throw new Error("Sign in to Firebase first.");
+  }
+
+  const configRef = doc(db, "poolConfig", "main");
+  const launchRef = doc(db, "seasonLaunches", "2026");
+  const auditRef = doc(collection(db, "audit"));
+
+  const [
+    configSnapshot,
+    claimSnapshots,
+    privateScheduleSnapshots,
+    weekOneSnapshot,
+    weekOneScoresSnapshot,
+    weekOneResultSnapshot,
+    commissionerTeamSnapshot,
+    primaryProfileSnapshot,
+  ] = await Promise.all([
+    getDoc(configRef),
+    getDocs(collection(db, "claims")),
+    getDocs(collection(db, "privateSchedules")),
+    getDoc(doc(db, "weeklyPublic", "1")),
+    getDoc(doc(db, "teamScores", "1")),
+    getDoc(doc(db, "weeklyResults", "1")),
+    getDoc(doc(db, "commissionerTeam", "main")),
+    getDoc(doc(db, "users", user.uid)),
+  ]);
+
+  if (!configSnapshot.exists()) {
+    throw new Error("The active 2026 pool configuration is missing.");
+  }
+
+  const config = configSnapshot.data();
+  const season =
+    typeof config.season === "number" ? config.season : 2026;
+  const currentWeek =
+    typeof config.currentWeek === "number" ? config.currentWeek : 1;
+  const scheduleId =
+    typeof config.scheduleId === "string" ? config.scheduleId : "";
+
+  if (season !== 2026) {
+    throw new Error("Only the active 2026 season can be launched.");
+  }
+
+  if (config.seasonLaunched === true) {
+    throw new Error("The 2026 season is already launched.");
+  }
+
+  if (currentWeek !== 1) {
+    throw new Error("Season launch is available only before Week 1 begins.");
+  }
+
+  if (config.schedulesLocked !== true || !scheduleId) {
+    throw new Error("Publish and lock the official schedule first.");
+  }
+
+  if (config.numberSelectionOpen === true) {
+    throw new Error(
+      "Close number selection before launching the season.",
+    );
+  }
+
+  if (claimSnapshots.size !== 32) {
+    throw new Error(
+      `All 32 schedule numbers must be claimed. Current claims: ${claimSnapshots.size}.`,
+    );
+  }
+
+  const claimUids = new Set<string>();
+
+  claimSnapshots.forEach((snapshot) => {
+    const uid = snapshot.data().uid;
+
+    if (typeof uid === "string" && uid) {
+      claimUids.add(uid);
+    }
+  });
+
+  if (claimUids.size !== 32) {
+    throw new Error(
+      "Every schedule number must belong to a different signed-in player.",
+    );
+  }
+
+  const validScheduleLines = privateScheduleSnapshots.docs.filter(
+    (snapshot) => {
+      const lineNumber = Number(snapshot.id);
+      const data = snapshot.data();
+
+      return (
+        Number.isInteger(lineNumber) &&
+        lineNumber >= 1 &&
+        lineNumber <= 32 &&
+        data.scheduleId === scheduleId &&
+        Array.isArray(data.assignments) &&
+        data.assignments.length === 18
+      );
+    },
+  );
+
+  if (validScheduleLines.length !== 32) {
+    throw new Error(
+      "Firebase does not contain 32 complete schedule lines for the active pull.",
+    );
+  }
+
+  const publicRows =
+    weekOneSnapshot.exists() &&
+    Array.isArray(weekOneSnapshot.data().rows)
+      ? weekOneSnapshot.data().rows
+      : [];
+
+  if (publicRows.length !== 32) {
+    throw new Error(
+      "The Week 1 public assignment board is incomplete.",
+    );
+  }
+
+  const scoreRows: Array<Record<string, unknown>> =
+    weekOneScoresSnapshot.exists() &&
+    Array.isArray(weekOneScoresSnapshot.data().rows)
+      ? (weekOneScoresSnapshot.data().rows as Array<
+          Record<string, unknown>
+        >)
+      : [];
+  const nflTeams = new Set(
+    scoreRows
+      .map((row) =>
+        typeof row.teamCode === "string"
+          ? row.teamCode
+          : "",
+      )
+      .filter(Boolean),
+  );
+
+  if (nflTeams.size < 32) {
+    throw new Error(
+      `Week 1 NFL data is incomplete. Current teams loaded: ${nflTeams.size}/32.`,
+    );
+  }
+
+  if (weekOneResultSnapshot.exists()) {
+    throw new Error(
+      "Week 1 already has an official result and cannot be relaunched.",
+    );
+  }
+
+  if (!commissionerTeamSnapshot.exists()) {
+    throw new Error("The commissioner team record is missing.");
+  }
+
+  const commissionerTeam = commissionerTeamSnapshot.data();
+
+  if (
+    typeof commissionerTeam.backup1Uid !== "string" ||
+    !commissionerTeam.backup1Uid ||
+    typeof commissionerTeam.backup2Uid !== "string" ||
+    !commissionerTeam.backup2Uid
+  ) {
+    throw new Error(
+      "Assign both Backup Commissioners before launching the season.",
+    );
+  }
+
+  const primaryName =
+    primaryProfileSnapshot.exists() &&
+    typeof primaryProfileSnapshot.data().displayName === "string"
+      ? primaryProfileSnapshot.data().displayName
+      : "Jimbo";
+  const launchedAt = new Date().toISOString();
+  const launchId = `season-2026-${launchedAt
+    .replaceAll(":", "")
+    .replaceAll(".", "-")}`;
+
+  await runTransaction(db, async (transaction) => {
+    const [freshConfig, priorLaunch] = await Promise.all([
+      transaction.get(configRef),
+      transaction.get(launchRef),
+    ]);
+
+    if (!freshConfig.exists()) {
+      throw new Error("The active 2026 pool configuration is missing.");
+    }
+
+    const fresh = freshConfig.data();
+
+    if (fresh.seasonLaunched === true || priorLaunch.exists()) {
+      throw new Error("The 2026 season is already launched.");
+    }
+
+    if (
+      fresh.numberSelectionOpen === true ||
+      fresh.scheduleId !== scheduleId ||
+      fresh.currentWeek !== 1
+    ) {
+      throw new Error(
+        "The pool changed during launch validation. Refresh and review the launch checklist.",
+      );
+    }
+
+    transaction.update(configRef, {
+      numberSelectionOpen: false,
+      seasonLaunched: true,
+      seasonLaunchedAt: launchedAt,
+      seasonLaunchedByUid: user.uid,
+      seasonLaunchedByEmail: user.email ?? "",
+      seasonLaunchedByName: primaryName,
+      seasonLaunchId: launchId,
+      weekOneLocked: true,
+      updatedAt: launchedAt,
+    });
+
+    transaction.set(launchRef, {
+      launchId,
+      season: 2026,
+      week: 1,
+      scheduleId,
+      claimCount: claimSnapshots.size,
+      uniquePlayerCount: claimUids.size,
+      privateScheduleCount: validScheduleLines.length,
+      publicAssignmentCount: publicRows.length,
+      nflTeamCount: nflTeams.size,
+      backup1Uid: commissionerTeam.backup1Uid,
+      backup2Uid: commissionerTeam.backup2Uid,
+      launchedAt,
+      launchedByUid: user.uid,
+      launchedByEmail: user.email ?? "",
+      launchedByName: primaryName,
+    });
+
+    transaction.set(auditRef, {
+      actionType: "season_2026_launched",
+      launchId,
+      season: 2026,
+      week: 1,
+      scheduleId,
+      claimCount: claimSnapshots.size,
+      nflTeamCount: nflTeams.size,
+      commissionerUid: user.uid,
+      commissionerEmail: user.email ?? "",
+      commissionerName: primaryName,
+      createdAt: launchedAt,
+    });
+  });
+
+  return {
+    launch_id: launchId,
+    season: 2026,
+    week: 1,
+    schedule_id: scheduleId,
+    claim_count: claimSnapshots.size,
+    nfl_team_count: nflTeams.size,
+    launched_at: launchedAt,
+  };
 }
 
 export async function resetCloud2026Pull(
@@ -624,6 +966,12 @@ export async function resetCloud2026Pull(
   if (currentWeek !== 1) {
     throw new Error(
       "The 2026 pull can be reset only while the pool is still on Week 1.",
+    );
+  }
+
+  if (config.seasonLaunched === true || config.weekOneLocked === true) {
+    throw new Error(
+      "The 2026 season has already launched. The preseason pull can no longer be reset.",
     );
   }
 
@@ -792,6 +1140,13 @@ export async function resetCloud2026Pull(
     scheduleId: schedule.id,
     scheduleGeneratedAt: schedule.generatedAt,
     scheduleLockedAt: schedule.lockedAt,
+    seasonLaunched: false,
+    seasonLaunchedAt: null,
+    seasonLaunchedByUid: null,
+    seasonLaunchedByEmail: null,
+    seasonLaunchedByName: null,
+    seasonLaunchId: null,
+    weekOneLocked: false,
     lastPullResetAt: resetAt,
     lastPullArchiveId: archiveId,
     updatedAt: resetAt,

@@ -16,6 +16,8 @@ export function CloudCommissionerPanel({
   const isCommissioner =
     auth.profile?.role === "primary_commissioner" ||
     auth.profile?.role === "co_commissioner";
+  const seasonLaunched =
+    cloud.poolStatus?.season_launched === true;
 
   const run = async (action: () => Promise<void>, success: string) => {
     setBusy(true);
@@ -99,9 +101,11 @@ export function CloudCommissionerPanel({
             cloud.poolStatus?.schedule_locked ? "locked" : ""
           }`}
         >
-          {cloud.poolStatus?.schedule_locked
-            ? "Firebase schedule locked"
-            : "Not published"}
+          {seasonLaunched
+            ? "2026 season live"
+            : cloud.poolStatus?.schedule_locked
+              ? "Firebase schedule locked"
+              : "Not published"}
         </span>
       </div>
 
@@ -116,7 +120,11 @@ export function CloudCommissionerPanel({
         </button>
 
         <button
-          disabled={busy || !cloud.poolStatus?.schedule_locked}
+          disabled={
+            busy ||
+            seasonLaunched ||
+            !cloud.poolStatus?.schedule_locked
+          }
           onClick={() =>
             void run(
               () =>
@@ -183,7 +191,7 @@ export function CloudCommissionerPanel({
                   <strong>{slot.player_name}</strong>
                 </div>
                 <button
-                  disabled={busy}
+                  disabled={busy || seasonLaunched}
                   onClick={() => {
                     if (
                       window.confirm(
@@ -205,6 +213,12 @@ export function CloudCommissionerPanel({
         </div>
       )}
 
+      {seasonLaunched && (
+        <div className="generator-message success">
+          The 2026 season is live. Number selection and claim releases
+          are permanently frozen for the active pull.
+        </div>
+      )}
       {message && <div className="generator-message">{message}</div>}
       {(error || cloud.error) && (
         <div className="generator-message error">{error || cloud.error}</div>

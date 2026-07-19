@@ -47,7 +47,9 @@ export function CloudPullResetPanel({
   const canReset =
     poolStatus?.season === 2026 &&
     poolStatus.current_week === 1 &&
-    poolStatus.schedule_locked;
+    poolStatus.schedule_locked &&
+    !poolStatus.season_launched &&
+    !poolStatus.week_one_locked;
 
   const resetPull = async () => {
     setError("");
