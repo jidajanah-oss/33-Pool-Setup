@@ -311,3 +311,31 @@ export interface CloudCommissionerTeamState {
   ) => Promise<void>;
   clearBackup: (slot: CloudCommissionerSlotId) => Promise<void>;
 }
+
+export type CloudBackgroundSyncOutcome =
+  | "success"
+  | "skipped"
+  | "error"
+  | "waiting";
+
+export type CloudBackgroundSyncTrigger =
+  | "scheduled"
+  | "callable";
+
+export interface CloudBackgroundNflSyncStatus {
+  enabled: boolean;
+  outcome: CloudBackgroundSyncOutcome;
+  trigger: CloudBackgroundSyncTrigger;
+  week: number;
+  message: string;
+  provider: string;
+  event_count: number;
+  team_count: number;
+  final_team_count: number;
+  live_team_count: number;
+  scheduled_team_count: number;
+  exception_team_count: number;
+  fetched_at: string | null;
+  completed_at: string | null;
+  next_run_minutes: number;
+}

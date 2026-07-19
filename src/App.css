@@ -4377,3 +4377,83 @@ small,
     width: 100%;
   }
 }
+
+/* Package 14 — Background NFL score sync */
+.cloud-background-sync-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.background-sync-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.background-sync-summary > div,
+.background-sync-message {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--ice-100);
+}
+
+.background-sync-summary small,
+.background-sync-summary strong,
+.background-sync-message strong,
+.background-sync-message span {
+  display: block;
+}
+
+.background-sync-summary small {
+  color: var(--muted);
+}
+
+.background-sync-summary strong {
+  margin-top: 5px;
+  color: var(--navy-900);
+  overflow-wrap: anywhere;
+}
+
+.background-sync-message {
+  background: rgba(0, 47, 108, 0.04);
+}
+
+.background-sync-message strong {
+  color: var(--navy-900);
+}
+
+.background-sync-message span {
+  margin-top: 5px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.background-sync-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.background-sync-actions button {
+  min-height: 48px;
+}
+
+.background-sync-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .background-sync-summary,
+  .background-sync-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .background-sync-actions button {
+    width: 100%;
+  }
+}

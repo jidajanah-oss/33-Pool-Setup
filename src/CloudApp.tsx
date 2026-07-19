@@ -4,6 +4,7 @@ import { OfficialLogo } from "./components/OfficialLogo";
 import { rules } from "./data/demoData";
 import { CloudAuthGate } from "./features/auth/CloudAuthGate";
 import { useCloudAuth } from "./features/auth/useCloudAuth";
+import { CloudBackgroundNflSyncPanel } from "./features/commissioner/CloudBackgroundNflSyncPanel";
 import { CloudBackupPanel } from "./features/commissioner/CloudBackupPanel";
 import { CloudCommissionerPanel } from "./features/commissioner/CloudCommissionerPanel";
 import { CloudPullResetPanel } from "./features/commissioner/CloudPullResetPanel";
@@ -365,6 +366,9 @@ export default function CloudApp() {
                       team={commissionerTeam}
                     />
                   )}
+                  <CloudBackgroundNflSyncPanel
+                    scoring={scoring}
+                  />
                   <CloudScoringPanel
                     onPoolRefresh={cloud.refresh}
                     scoring={scoring}

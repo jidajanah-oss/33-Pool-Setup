@@ -344,6 +344,12 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+
+    match /nflSyncStatus/{documentId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     match /audit/{auditId} {
       allow read, write: if isCommissioner();
     }
