@@ -405,10 +405,6 @@ export default function CloudApp() {
                     onPoolRefresh={cloud.refresh}
                     scoring={scoring}
                   />
-                  <CloudPaymentLedgerPanel
-                    currentWeek={currentWeek}
-                    payments={payments}
-                  />
                   <ScheduleGeneratorPanel />
                 </div>
               )}
@@ -417,6 +413,7 @@ export default function CloudApp() {
                 auth={auth}
                 canOpenCommissioner={canOpenCommissioner}
                 cloud={cloud}
+                currentWeek={currentWeek}
                 installPromptAvailable={Boolean(installPrompt)}
                 isIos={isIos}
                 isStandalone={isStandalone}
@@ -716,6 +713,7 @@ function CloudMore({
   auth,
   cloud,
   canOpenCommissioner,
+  currentWeek,
   installPromptAvailable,
   isIos,
   isStandalone,
@@ -726,6 +724,7 @@ function CloudMore({
   auth: ReturnType<typeof useCloudAuth>;
   cloud: ReturnType<typeof useCloudEnrollment>;
   canOpenCommissioner: boolean;
+  currentWeek: number;
   installPromptAvailable: boolean;
   isIos: boolean;
   isStandalone: boolean;
@@ -757,12 +756,6 @@ function CloudMore({
 
       <section className="more-grid">
         <More
-          helper="Secure blind selection"
-          label="Choose Number"
-          onClick={() => onNavigate("numbers")}
-          symbol="#"
-        />
-        <More
           helper={
             payments.myAccount
               ? `${payments.myAccount.payment_status} · Firebase ledger`
@@ -787,6 +780,13 @@ function CloudMore({
           />
         )}
       </section>
+
+      {canOpenCommissioner && (
+        <CloudPaymentLedgerPanel
+          currentWeek={currentWeek}
+          payments={payments}
+        />
+      )}
 
       <section className="section-card production-app-card">
         <div className="section-heading">
