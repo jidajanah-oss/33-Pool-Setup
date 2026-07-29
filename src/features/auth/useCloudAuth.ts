@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  isSignInWithEmailLink,
   onAuthStateChanged,
-  sendSignInLinkToEmail,
-  signInWithEmailLink,
+  signInWithCustomToken,
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
@@ -19,6 +17,11 @@ import {
   where,
 } from "firebase/firestore";
 import {
+  getFunctions,
+  httpsCallable,
+} from "firebase/functions";
+import {
+  app,
   auth,
   db,
   isFirebaseConfigured,
@@ -31,8 +34,18 @@ import {
   PRIMARY_COMMISSIONER_EMAIL,
 } from "../../services/cloudRoleService";
 
-const EMAIL_STORAGE_KEY = "33-pool-firebase-email";
+const OTP_EMAIL_STORAGE_KEY = "33-pool-otp-email";
 const NAME_STORAGE_KEY = "33-pool-firebase-display-name";
+
+interface RequestOtpResponse {
+  maskedEmail: string;
+  expiresInSeconds: number;
+}
+
+interface VerifyOtpResponse {
+  customToken: string;
+  email: string;
+}
 
 export interface CloudAuthController {
   configured: boolean;
@@ -41,17 +54,57 @@ export interface CloudAuthController {
   user: User | null;
   profile: CloudProfile | null;
   error: string;
-  magicLinkSentTo: string;
-  signInWithMagicLink: (
+  otpSentTo: string;
+  prepareOtp: (
     email: string,
     displayName: string,
   ) => Promise<void>;
+  requestOtp: (
+    email: string,
+    displayName: string,
+  ) => Promise<void>;
+  verifyOtp: (
+    email: string,
+    code: string,
+  ) => Promise<void>;
+  clearOtpRequest: () => void;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
 function cleanDisplayName(value: string): string {
   return value.trim().replace(/\s+/g, " ");
+}
+
+function normalizeCredentials(
+  email: string,
+  displayName: string,
+): {
+  email: string;
+  displayName: string;
+} {
+  const cleanEmail = email.trim().toLowerCase();
+  const savedName = cleanDisplayName(
+    window.localStorage.getItem(NAME_STORAGE_KEY) ?? "",
+  );
+  const cleanName =
+    cleanDisplayName(displayName) || savedName;
+
+  if (
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) ||
+    cleanEmail.length > 254
+  ) {
+    throw new Error("Enter a valid email address.");
+  }
+
+  if (cleanName.length < 2 || cleanName.length > 40) {
+    throw new Error("Enter the player's name.");
+  }
+
+  return {
+    email: cleanEmail,
+    displayName: cleanName,
+  };
 }
 
 async function findLatestInvite(
@@ -200,8 +253,9 @@ export function useCloudAuth(): CloudAuthController {
   const [profile, setProfile] =
     useState<CloudProfile | null>(null);
   const [error, setError] = useState("");
-  const [magicLinkSentTo, setMagicLinkSentTo] =
-    useState("");
+  const [otpSentTo, setOtpSentTo] = useState(() =>
+    window.localStorage.getItem(OTP_EMAIL_STORAGE_KEY) ?? "",
+  );
 
   const loadProfile = useCallback(
     async (nextUser: User | null) => {
@@ -302,58 +356,6 @@ export function useCloudAuth(): CloudAuthController {
 
     let active = true;
 
-    const completeEmailLink = async () => {
-      try {
-        if (
-          isSignInWithEmailLink(
-            firebaseAuth,
-            window.location.href,
-          )
-        ) {
-          let email =
-            window.localStorage.getItem(EMAIL_STORAGE_KEY) ?? "";
-
-          if (!email) {
-            email =
-              window.prompt(
-                "Confirm the email address that received this 33 Pool sign-in link:",
-              )?.trim() ?? "";
-          }
-
-          if (!email) {
-            throw new Error(
-              "Enter the same email address that received the sign-in link.",
-            );
-          }
-
-          await signInWithEmailLink(
-            firebaseAuth,
-            email,
-            window.location.href,
-          );
-          window.localStorage.removeItem(EMAIL_STORAGE_KEY);
-
-          const cleanUrl = `${window.location.origin}${import.meta.env.BASE_URL}`;
-          window.history.replaceState(
-            {},
-            document.title,
-            cleanUrl,
-          );
-        }
-      } catch (caught) {
-        if (active) {
-          setError(
-            caught instanceof Error
-              ? caught.message
-              : "The Firebase sign-in link could not be completed.",
-          );
-          setLoading(false);
-        }
-      }
-    };
-
-    void completeEmailLink();
-
     const unsubscribe = onAuthStateChanged(
       firebaseAuth,
       (nextUser) => {
@@ -376,44 +378,110 @@ export function useCloudAuth(): CloudAuthController {
     };
   }, [loadProfile]);
 
-  const signInWithMagicLink = async (
+  const prepareOtp = async (
     email: string,
     displayName: string,
   ): Promise<void> => {
-    const firebaseAuth = requireFirebaseAuth();
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanName = cleanDisplayName(displayName);
-
-    if (!cleanEmail.includes("@")) {
-      throw new Error("Enter a valid email address.");
-    }
-
-    if (cleanName.length < 2 || cleanName.length > 40) {
-      throw new Error("Enter the player's name.");
-    }
-
-    setError("");
-    setMagicLinkSentTo("");
+    const credentials = normalizeCredentials(
+      email,
+      displayName,
+    );
 
     window.localStorage.setItem(
-      EMAIL_STORAGE_KEY,
-      cleanEmail,
+      OTP_EMAIL_STORAGE_KEY,
+      credentials.email,
     );
     window.localStorage.setItem(
       NAME_STORAGE_KEY,
-      cleanName,
+      credentials.displayName,
     );
+    setOtpSentTo(credentials.email);
+    setError("");
+  };
 
-    await sendSignInLinkToEmail(
-      firebaseAuth,
-      cleanEmail,
+  const requestOtp = async (
+    email: string,
+    displayName: string,
+  ): Promise<void> => {
+    const credentials = normalizeCredentials(
+      email,
+      displayName,
+    );
+    const functions = getFunctions(app, "us-east1");
+    const requestCode = httpsCallable<
       {
-        url: `${window.location.origin}${import.meta.env.BASE_URL}`,
-        handleCodeInApp: true,
+        email: string;
+        displayName: string;
+        purpose: "sign_in";
       },
+      RequestOtpResponse
+    >(functions, "request33PoolOtp");
+
+    setError("");
+
+    await requestCode({
+      email: credentials.email,
+      displayName: credentials.displayName,
+      purpose: "sign_in",
+    });
+
+    window.localStorage.setItem(
+      OTP_EMAIL_STORAGE_KEY,
+      credentials.email,
+    );
+    window.localStorage.setItem(
+      NAME_STORAGE_KEY,
+      credentials.displayName,
+    );
+    setOtpSentTo(credentials.email);
+  };
+
+  const verifyOtp = async (
+    email: string,
+    code: string,
+  ): Promise<void> => {
+    const firebaseAuth = requireFirebaseAuth();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanCode = code.replace(/\D/g, "");
+
+    if (!cleanEmail) {
+      throw new Error("Enter the email that received the code.");
+    }
+
+    if (cleanCode.length !== 6) {
+      throw new Error("Enter the complete 6-digit code.");
+    }
+
+    const functions = getFunctions(app, "us-east1");
+    const verifyCode = httpsCallable<
+      { email: string; code: string },
+      VerifyOtpResponse
+    >(functions, "verify33PoolOtp");
+    const result = await verifyCode({
+      email: cleanEmail,
+      code: cleanCode,
+    });
+
+    if (!result.data.customToken) {
+      throw new Error(
+        "Firebase did not return a secure sign-in token.",
+      );
+    }
+
+    await signInWithCustomToken(
+      firebaseAuth,
+      result.data.customToken,
     );
 
-    setMagicLinkSentTo(cleanEmail);
+    window.localStorage.removeItem(OTP_EMAIL_STORAGE_KEY);
+    setOtpSentTo("");
+    setError("");
+  };
+
+  const clearOtpRequest = () => {
+    window.localStorage.removeItem(OTP_EMAIL_STORAGE_KEY);
+    setOtpSentTo("");
+    setError("");
   };
 
   const signOut = async (): Promise<void> => {
@@ -430,8 +498,11 @@ export function useCloudAuth(): CloudAuthController {
     user,
     profile,
     error,
-    magicLinkSentTo,
-    signInWithMagicLink,
+    otpSentTo,
+    prepareOtp,
+    requestOtp,
+    verifyOtp,
+    clearOtpRequest,
     signOut,
     refreshProfile,
   };

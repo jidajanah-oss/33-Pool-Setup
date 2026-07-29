@@ -1,4 +1,7 @@
-import { sendSignInLinkToEmail } from "firebase/auth";
+import {
+  getFunctions,
+  httpsCallable,
+} from "firebase/functions";
 import {
   collection,
   deleteField,
@@ -9,6 +12,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import {
+  app,
   requireFirebaseAuth,
   requireFirestore,
 } from "../lib/firebase";
@@ -297,18 +301,27 @@ export async function fetchCloudCommissionerTeam(): Promise<{
 }
 
 async function sendInviteEmail(
-  inviteId: string,
+  _inviteId: string,
   email: string,
+  displayName: string,
 ): Promise<void> {
-  const auth = requireFirebaseAuth();
-  const url = new URL(
-    `${window.location.origin}${import.meta.env.BASE_URL}`,
-  );
-  url.searchParams.set("invite", inviteId);
+  const functions = getFunctions(app, "us-east1");
+  const sendCode = httpsCallable<
+    {
+      email: string;
+      displayName: string;
+      purpose: "invite";
+    },
+    {
+      maskedEmail: string;
+      expiresInSeconds: number;
+    }
+  >(functions, "request33PoolOtp");
 
-  await sendSignInLinkToEmail(auth, email, {
-    url: url.toString(),
-    handleCodeInApp: true,
+  await sendCode({
+    email,
+    displayName,
+    purpose: "invite",
   });
 }
 
@@ -343,7 +356,11 @@ export async function createCloudPoolInvite(
   const inviteRef = doc(collection(db, "invites"));
   const sentAt = new Date().toISOString();
 
-  await sendInviteEmail(inviteRef.id, cleanEmail);
+  await sendInviteEmail(
+    inviteRef.id,
+    cleanEmail,
+    cleanDisplayName,
+  );
 
   await setDoc(inviteRef, {
     displayName: cleanDisplayName,
@@ -386,7 +403,11 @@ export async function resendCloudPoolInvite(
     throw new Error("The invitation email is missing.");
   }
 
-  await sendInviteEmail(inviteId, email);
+  await sendInviteEmail(
+    inviteId,
+    email,
+    cleanName(asString(data.displayName, "Player")),
+  );
 
   const sender = requireCurrentUser();
   const senderProfile = await getDoc(

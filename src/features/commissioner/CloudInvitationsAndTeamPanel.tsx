@@ -87,7 +87,7 @@ export function CloudInvitationsAndTeamPanel({
         setDisplayName("");
         setEmail("");
       },
-      `Sign-in invitation sent to ${targetEmail}.`,
+      `Verification-code invitation sent to ${targetEmail}.`,
     );
   };
 
@@ -119,7 +119,7 @@ export function CloudInvitationsAndTeamPanel({
           <p className="eyebrow">Player access</p>
           <h2>Invitations and Commissioner Team</h2>
           <p>
-            Send Firebase sign-in links and maintain exactly one Primary
+            Send in-app verification codes and maintain exactly one Primary
             Commissioner with up to two Backup Commissioners.
           </p>
         </div>
@@ -158,13 +158,14 @@ export function CloudInvitationsAndTeamPanel({
         >
           {busy === "invite"
             ? "Sending…"
-            : "Send Firebase Sign-In Invite"}
+            : "Send Verification-Code Invite"}
         </button>
       </div>
 
       <p className="generator-note">
-        The player opens the email link on their own device. Their invited
-        name is used when their Firebase profile is created.
+        The player opens 33 Pool, enters the invited email, chooses
+        “I Already Have a Code,” and enters the code from the email.
+        Their invited name is used when the Firebase profile is created.
       </p>
 
       <div className="commissioner-team-grid">

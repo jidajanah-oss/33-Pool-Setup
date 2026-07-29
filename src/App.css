@@ -5190,3 +5190,39 @@ small,
     width: 100%;
   }
 }
+
+/* Package 18 — iPhone Home Screen OTP sign-in */
+.cloud-auth-secondary-button {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 10px;
+  border: 2px solid var(--navy-900);
+  border-radius: 14px;
+  background: white;
+  color: var(--navy-900);
+  font-weight: 900;
+}
+
+.cloud-auth-text-button {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--navy-900);
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.cloud-auth-code-input {
+  text-align: center;
+  font-size: 1.55rem !important;
+  font-weight: 900;
+  letter-spacing: 0.32em;
+  font-variant-numeric: tabular-nums;
+}
+
+.cloud-auth-card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
