@@ -69,7 +69,7 @@ function profileSubtitle(
 
   if (role === "primary_commissioner" || role === "co_commissioner") {
     return scheduleNumber
-      ? `${roleLabel} Â· Schedule #${scheduleNumber}`
+      ? `${roleLabel} · Schedule #${scheduleNumber}`
       : roleLabel;
   }
 
@@ -430,7 +430,7 @@ export default function CloudApp() {
               onClick={() => setScreen("home")}
               type="button"
             >
-              <span className="cloud-tab-icon">âŒ‚</span>
+              <span className="cloud-tab-icon">⌂</span>
               <span>Home</span>
             </button>
             <button
@@ -474,7 +474,7 @@ export default function CloudApp() {
               onClick={() => setScreen("more")}
               type="button"
             >
-              <span className="cloud-tab-icon">â€¢â€¢â€¢</span>
+              <span className="cloud-tab-icon">•••</span>
               <span>More</span>
             </button>
           </nav>
@@ -489,8 +489,8 @@ function cleanNflStatusDetail(
 ): string {
   return (value ?? "")
     .replace(/\bSTATUS_[A-Z0-9_]+\b/g, "")
-    .replace(/\s*Â·\s*Â·\s*/g, " Â· ")
-    .replace(/^\s*Â·\s*|\s*Â·\s*$/g, "")
+    .replace(/\s*·\s*·\s*/g, " · ")
+    .replace(/^\s*·\s*|\s*·\s*$/g, "")
     .trim();
 }
 
@@ -558,7 +558,7 @@ function CloudHome({
             {currentAssignment?.isBye
               ? "BYE"
               : currentScore?.status === "live" || currentScore?.status === "final"
-                ? currentScore.score ?? "â€”"
+                ? currentScore.score ?? "—"
                 : "33"}
           </strong>
         </div>
@@ -693,7 +693,7 @@ function CloudRules() {
           <small>Official pool rules</small>
           <strong>Final score of 33 wins</strong>
           <span>
-            32 players Â· $3 per week Â· 18 paid weeks
+            32 players · $3 per week · 18 paid weeks
           </span>
         </div>
       </section>
@@ -758,7 +758,7 @@ function CloudMore({
         <More
           helper={
             payments.myAccount
-              ? `${payments.myAccount.payment_status} Â· Firebase ledger`
+              ? `${payments.myAccount.payment_status} · Firebase ledger`
               : "Firebase balance and history"
           }
           label="Payments"
@@ -860,7 +860,7 @@ function More({
         <strong>{label}</strong>
         <small>{helper}</small>
       </div>
-      <b>â€º</b>
+      <b>›</b>
     </button>
   );
 }
