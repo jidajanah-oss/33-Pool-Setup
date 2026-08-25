@@ -32,7 +32,10 @@ export function CloudAuthGate({
     }
   }, [auth.otpSentTo]);
 
-  if (auth.loading || (auth.session && !auth.profile)) {
+  if (
+    auth.loading ||
+    (auth.session && !auth.profile && !auth.error)
+  ) {
     return (
       <div className="cloud-auth-shell">
         <section className="cloud-auth-card cloud-auth-loading">
@@ -44,6 +47,46 @@ export function CloudAuthGate({
     );
   }
 
+  if (auth.session && !auth.profile && auth.error) {
+    return (
+      <div className="cloud-auth-shell">
+        <section className="cloud-auth-card">
+          <OfficialLogo className="cloud-auth-logo" />
+
+          <p className="eyebrow">Connection recovery</p>
+          <h1>33 Pool needs a quick retry</h1>
+
+          <p className="cloud-auth-copy">
+            Your sign-in is still secure, but your player profile
+            did not finish loading.
+          </p>
+
+          <button
+            className="cloud-auth-primary-button"
+            onClick={() => void auth.refreshProfile()}
+            type="button"
+          >
+            Try Again
+          </button>
+
+          <button
+            className="cloud-auth-text-button"
+            onClick={() => void auth.signOut()}
+            type="button"
+          >
+            Sign Out
+          </button>
+
+          <div
+            aria-live="assertive"
+            className="cloud-auth-error"
+          >
+            {auth.error}
+          </div>
+        </section>
+      </div>
+    );
+  }
   if (auth.session && auth.profile) return <>{children}</>;
 
   const requestCode = async () => {

@@ -264,21 +264,33 @@ export function useCloudAuth(): CloudAuthController {
         return;
       }
 
-      try {
-        setProfile(await loadOrCreateProfile(nextUser));
-        setError("");
-      } catch (caught) {
-        setProfile(null);
-        setError(
-          caught instanceof Error
-            ? caught.message
-            : "The Firebase player profile could not be loaded.",
-        );
+      let lastError: unknown = null;
+
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          if (attempt > 0) {
+            await new Promise<void>((resolve) => {
+              window.setTimeout(resolve, 800);
+            });
+          }
+
+          setProfile(await loadOrCreateProfile(nextUser));
+          setError("");
+          return;
+        } catch (caught) {
+          lastError = caught;
+        }
       }
+
+      setProfile(null);
+      setError(
+        lastError instanceof Error
+          ? lastError.message
+          : "The Firebase player profile could not be loaded.",
+      );
     },
     [],
   );
-
   const refreshProfile = useCallback(async () => {
     await loadProfile(user);
   }, [loadProfile, user]);
