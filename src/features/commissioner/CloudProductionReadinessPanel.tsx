@@ -168,6 +168,7 @@ export function CloudProductionReadinessPanel({
       const role = user?.role ?? "player";
       const invited = invites.length > 0;
       const signedIn = Boolean(user || linkedInvite?.linked_uid);
+      const inviteStepComplete = invited || signedIn;
       const pendingInvite = invited && !signedIn;
       const scheduleNumber = account?.schedule_number ?? null;
       const paymentCurrent = account
@@ -177,12 +178,7 @@ export function CloudProductionReadinessPanel({
         ? account.remaining_season_balance_cents === 0
         : false;
       const attention: string[] = [];
-
-      if (role === "player" && !invited && signedIn) {
-        attention.push("No invitation record");
-      }
-
-      if (invites.length > 1) {
+if (invites.length > 1) {
         attention.push(`${invites.length} invitation records`);
       }
 
@@ -208,7 +204,7 @@ export function CloudProductionReadinessPanel({
           "Player",
         email,
         role,
-        invited,
+        invited: inviteStepComplete,
         inviteCount: invites.length,
         pendingInvite,
         signedIn,

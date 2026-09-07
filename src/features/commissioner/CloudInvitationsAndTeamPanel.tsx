@@ -87,7 +87,7 @@ export function CloudInvitationsAndTeamPanel({
         setDisplayName("");
         setEmail("");
       },
-      `Verification-code invitation sent to ${targetEmail}.`,
+      `Invitation sent to ${targetEmail}.`,
     );
   };
 
@@ -119,7 +119,7 @@ export function CloudInvitationsAndTeamPanel({
           <p className="eyebrow">Player access</p>
           <h2>Invitations and Commissioner Team</h2>
           <p>
-            Send in-app verification codes and maintain exactly one Primary
+            Send player invitations and maintain exactly one Primary
             Commissioner with up to two Backup Commissioners.
           </p>
         </div>
@@ -158,7 +158,7 @@ export function CloudInvitationsAndTeamPanel({
         >
           {busy === "invite"
             ? "Sending…"
-            : "Send Verification-Code Invite"}
+            : "Send Invitation"}
         </button>
       </div>
 

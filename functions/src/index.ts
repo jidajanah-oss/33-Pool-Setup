@@ -486,6 +486,103 @@ async function sendBrevoCode(input: {
   }
 }
 
+
+async function sendBrevoInvitation(input: {
+  email: string;
+  displayName: string;
+}): Promise<void> {
+  const senderEmail = BREVO_SENDER_EMAIL.value().trim();
+
+  if (!senderEmail) {
+    throw new Error(
+      "The verified Brevo sender email is not configured.",
+    );
+  }
+
+  const safeName = escapeHtml(input.displayName);
+  const poolUrl = "https://33pool.poolplayhub.com";
+
+  const response = await fetch(
+    "https://api.brevo.com/v3/smtp/email",
+    {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": BREVO_API_KEY.value(),
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: {
+          name: "33 Football Pool",
+          email: senderEmail,
+        },
+        to: [
+          {
+            name: input.displayName,
+            email: input.email,
+          },
+        ],
+        subject: "You're invited to the 33 Football Pool",
+        htmlContent: `
+          <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px;color:#061f42;">
+            <h1>33 Football Pool</h1>
+
+            <p>Hello ${safeName},</p>
+
+            <p>
+              You've been invited to join the
+              <strong>33 Football Pool</strong>.
+            </p>
+
+            <p>
+              Open 33 Pool below. On the sign-in screen,
+              enter this email address and choose
+              <strong>Send Verification Code</strong>.
+            </p>
+
+            <p>
+              A fresh 6-digit code will be sent when
+              you are ready to sign in.
+            </p>
+
+            <div style="margin:28px 0;text-align:center;">
+              <a
+                href="${poolUrl}"
+                style="display:inline-block;background:#061f42;color:#ffffff;text-decoration:none;font-weight:700;padding:15px 26px;border-radius:10px;"
+              >
+                Open 33 Pool
+              </a>
+            </div>
+
+            <p style="font-size:14px;color:#53657c;">
+              This invitation does not contain a sign-in code.
+            </p>
+          </div>
+        `,
+        textContent:
+          `Hello ${input.displayName},\n\n` +
+          "You've been invited to join the 33 Football Pool.\n\n" +
+          `Open 33 Pool: ${poolUrl}\n\n` +
+          "Enter this email address and choose Send Verification Code. " +
+          "A fresh 6-digit code will then be emailed to you.",
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+
+    logger.error("Brevo invitation delivery failed", {
+      status: response.status,
+      detail: detail.slice(0, 500),
+    });
+
+    throw new Error(
+      `Brevo rejected the invitation email with HTTP ${response.status}.`,
+    );
+  }
+}
+
 export const request33PoolOtp = onCall(
   {
     region: REGION,
@@ -531,6 +628,25 @@ export const request33PoolOtp = onCall(
           "Commissioner access is required to send invitations.",
         );
       }
+
+      try {
+        await sendBrevoInvitation({
+          email,
+          displayName,
+        });
+      } catch (error) {
+        throw new HttpsError(
+          "internal",
+          error instanceof Error
+            ? error.message
+            : "The invitation email could not be sent.",
+        );
+      }
+
+      return {
+        maskedEmail: maskEmail(email),
+        expiresInSeconds: 0,
+      };
     }
 
     const now = Date.now();
