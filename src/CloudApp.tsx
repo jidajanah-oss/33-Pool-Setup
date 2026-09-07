@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { OfficialLogo } from "./components/OfficialLogo";
+import { GlobalActionFeedback } from "./components/GlobalActionFeedback";
 import { rules } from "./data/demoData";
 import { CloudAuthGate } from "./features/auth/CloudAuthGate";
 import { useCloudAuth } from "./features/auth/useCloudAuth";
@@ -174,7 +175,9 @@ export default function CloudApp() {
   };
 
   return (
-    <CloudAuthGate auth={auth}>
+    <>
+      <GlobalActionFeedback />
+      <CloudAuthGate auth={auth}>
       <div className="app-shell">
         <aside className="desktop-sidebar">
           <div className="desktop-brand">
@@ -480,7 +483,8 @@ export default function CloudApp() {
           </nav>
         </div>
       </div>
-    </CloudAuthGate>
+      </CloudAuthGate>
+    </>
   );
 }
 
