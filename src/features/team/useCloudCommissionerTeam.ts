@@ -71,7 +71,46 @@ export function useCloudCommissionerTeam(
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+
+    if (!canLoad) {
+      return undefined;
+    }
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refresh();
+      }
+    };
+
+    const timerId = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void refresh();
+      }
+    }, 10000);
+
+    window.addEventListener("focus", refreshWhenVisible);
+    window.addEventListener("pageshow", refreshWhenVisible);
+    document.addEventListener(
+      "visibilitychange",
+      refreshWhenVisible,
+    );
+
+    return () => {
+      window.clearInterval(timerId);
+      window.removeEventListener(
+        "focus",
+        refreshWhenVisible,
+      );
+      window.removeEventListener(
+        "pageshow",
+        refreshWhenVisible,
+      );
+      document.removeEventListener(
+        "visibilitychange",
+        refreshWhenVisible,
+      );
+    };
+  }, [canLoad, refresh]);
 
   const sendInvite = async (
     displayName: string,
