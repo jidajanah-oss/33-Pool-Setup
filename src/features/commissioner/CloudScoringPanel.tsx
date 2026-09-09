@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { NFL_2026_TEAMS } from "../../data/nfl2026";
 import { calculateCloudResolutionPreview } from "../../services/cloudScoringService";
+import { fetchEspnNflWeek } from "../../services/nflLiveScoreService";
 import type {
   CloudResolutionPreview,
   CloudRole,
@@ -174,6 +175,18 @@ export function CloudScoringPanel({
       `Week ${scoring.selectedWeek} NFL schedule and scores synced.`,
     );
 
+  const restoreNflScore = (teamCode: string) =>
+    run(async () => {
+      const { scores } = await fetchEspnNflWeek(scoring.selectedWeek);
+      const providerScore = scores.find((row) => row.team_code === teamCode);
+      if (!providerScore || (!providerScore.event_id && providerScore.status !== "bye")) {
+        throw new Error("No NFL game was found for this team. The override has not changed.");
+      }
+      setDraftScores((current) => current.map((row) =>
+        row.team_code === teamCode ? providerScore : row,
+      ));
+    }, "NFL score restored in the draft. Select Save Draft Scores to resume automatic updates for this team.");
+
   const save = () =>
     run(
       () =>
@@ -282,6 +295,7 @@ export function CloudScoringPanel({
                 scoring.selectedWeek === week ? "active" : ""
               }
               key={week}
+              disabled={busy}
               onClick={() => scoring.setSelectedWeek(week)}
               type="button"
             >
@@ -299,7 +313,7 @@ export function CloudScoringPanel({
           const isBye = team.byeWeek === scoring.selectedWeek;
 
           return (
-            <label
+            <div
               className={`cloud-score-card ${
                 isBye ? "bye" : ""
               }`}
@@ -326,6 +340,16 @@ export function CloudScoringPanel({
                                 ? "Canceled"
                                 : cleanProviderDetail(row?.status_detail) || "Scheduled"}
                   </small>
+                  {row?.source === "manual" && !isBye && (
+                    <button
+                      type="button"
+                      disabled={busy || Boolean(scoring.result)}
+                      onClick={() => void restoreNflScore(team.code)}
+                      aria-label={`Restore NFL sync for ${team.name}`}
+                    >
+                      Restore NFL sync
+                    </button>
+                  )}
                 </div>
               </div>
               {isBye ? (
@@ -345,7 +369,7 @@ export function CloudScoringPanel({
                   value={row?.score ?? ""}
                 />
               )}
-            </label>
+            </div>
           );
         })}
       </div>
