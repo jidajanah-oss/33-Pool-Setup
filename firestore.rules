@@ -11,6 +11,15 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    // uid is a stable ledger key. An explicit owner overrides legacy access.
+    function ownsEntry(uid) {
+      return signedIn() && (
+        (exists(/databases/$(database)/documents/userClaims/$(uid))
+          && get(/databases/$(database)/documents/userClaims/$(uid)).data.get('ownerUid', uid) == request.auth.uid)
+        || (!exists(/databases/$(database)/documents/userClaims/$(uid)) && isOwner(uid))
+      );
+    }
+
     function isPrimary() {
       return signedIn()
         && (
@@ -48,6 +57,19 @@ service cloud.firestore {
       && get(
         /databases/$(database)/documents/poolConfig/main
       ).data.schedulesLocked == true;
+    }
+
+    function seasonLive() {
+      return get(/databases/$(database)/documents/poolConfig/main).data.get('seasonLaunched', false) == true;
+    }
+
+    function validOwnerChange(lineId, uid) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerUid'])
+        || (isPrimary()
+          && request.resource.data.ownerUid is string
+          && exists(/databases/$(database)/documents/users/$(request.resource.data.ownerUid))
+          && getAfter(/databases/$(database)/documents/claims/$(lineId)).data.ownerUid
+            == getAfter(/databases/$(database)/documents/userClaims/$(uid)).data.ownerUid);
     }
 
     function validPlayerName(name) {
@@ -226,11 +248,14 @@ service cloud.firestore {
           /databases/$(database)/documents/userClaims/$(request.auth.uid)
         ).data.lineId == lineId;
 
-      allow update, delete: if isCommissioner();
+      allow update: if isCommissioner()
+        && (!seasonLive() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid', 'lineId', 'claimedAt']))
+        && validOwnerChange(lineId, resource.data.uid);
+      allow delete: if isCommissioner() && !seasonLive();
     }
 
     match /userClaims/{uid} {
-      allow read: if isOwner(uid) || isCommissioner();
+      allow read: if ownsEntry(uid) || isCommissioner();
 
       allow create: if isOwner(uid)
         && poolIsOpen()
@@ -253,7 +278,10 @@ service cloud.firestore {
           /databases/$(database)/documents/claims/$(request.resource.data.lineId)
         ).data.uid == uid;
 
-      allow update, delete: if isCommissioner();
+      allow update: if isCommissioner()
+        && (!seasonLive() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid', 'lineId', 'claimedAt']))
+        && validOwnerChange(resource.data.lineId, uid);
+      allow delete: if isCommissioner() && !seasonLive();
     }
 
     match /privateSchedules/{lineId} {
@@ -265,7 +293,7 @@ service cloud.firestore {
           )
           && get(
             /databases/$(database)/documents/claims/$(lineId)
-          ).data.uid == request.auth.uid
+          ).data.get('ownerUid', get(/databases/$(database)/documents/claims/$(lineId)).data.uid) == request.auth.uid
         );
 
       allow write: if isCommissioner();
@@ -297,7 +325,7 @@ service cloud.firestore {
     }
 
     match /payments/{uid} {
-      allow read: if isOwner(uid) || isCommissioner();
+      allow read: if ownsEntry(uid) || isCommissioner();
 
       allow create, update: if isCommissioner()
         && request.resource.data.keys().hasOnly([
@@ -328,7 +356,7 @@ service cloud.firestore {
       allow read: if isCommissioner()
         || (
           signedIn()
-          && resource.data.uid == request.auth.uid
+          && ownsEntry(resource.data.uid)
         );
 
       allow create: if isCommissioner()

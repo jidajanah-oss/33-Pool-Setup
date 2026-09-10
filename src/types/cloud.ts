@@ -35,6 +35,8 @@ export interface CloudNumberSlot {
 }
 
 export interface CloudClaim {
+  entry_id: string;
+  player_name: string;
   schedule_number: number;
   claimed_at: string;
 }
@@ -55,6 +57,8 @@ export interface CloudEnrollmentState {
   commissionerExists: boolean;
   numberBoard: CloudNumberSlot[];
   ownClaim: CloudClaim | null;
+  ownClaims: CloudClaim[];
+  selectEntry: (entryId: string) => void;
   ownSchedule: GeneratedScheduleAssignment[];
   claimedCount: number;
   refresh: () => Promise<void>;
@@ -78,6 +82,7 @@ export type CloudPaymentMethod =
 
 export interface CloudPaymentAccount {
   uid: string;
+  owner_uid: string;
   player_name: string;
   schedule_number: number | null;
   amount_paid_cents: number;

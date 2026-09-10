@@ -165,6 +165,7 @@ export function CloudProductionReadinessPanel({
       const account = uid
         ? accountsByUid.get(uid)
         : accountByEmail.get(email);
+      const owner = account ? usersByUid.get(account.owner_uid) : user;
       const role = user?.role ?? "player";
       const invited = invites.length > 0;
       const signedIn = Boolean(user || linkedInvite?.linked_uid);
@@ -198,11 +199,12 @@ if (invites.length > 1) {
         key: email || uid || `unknown-${rows.length}`,
         uid,
         displayName:
+          account?.player_name ??
           user?.display_name ??
           invites[0]?.display_name ??
           account?.player_name ??
           "Player",
-        email,
+        email: owner?.email ?? email,
         role,
         invited: inviteStepComplete,
         inviteCount: invites.length,

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CloudEnrollmentState, CloudProfile, CloudWeeklyRow } from "../../types/cloud";
 import type { GeneratedScheduleSet } from "../../types/pool";
 import {
   bootstrapPrimaryCommissioner,
   claimCloudNumber,
   fetchCommissionerExists,
-  fetchMyClaim,
+  fetchMyClaims,
   fetchMySchedule,
   fetchNumberBoard,
   fetchPoolStatus,
@@ -24,35 +24,51 @@ export function useCloudEnrollment(profile: CloudProfile | null): CloudEnrollmen
   const [numberBoard, setNumberBoard] = useState<CloudEnrollmentState["numberBoard"]>([]);
   const [ownClaim, setOwnClaim] = useState<CloudEnrollmentState["ownClaim"]>(null);
   const [ownSchedule, setOwnSchedule] = useState<CloudEnrollmentState["ownSchedule"]>([]);
+  const [ownClaims, setOwnClaims] = useState<CloudEnrollmentState["ownClaims"]>([]);
+  const selected = useRef<{ uid: string; entryId: string } | null>(null);
+  const request = useRef(0);
+  const invalidateRequests = useCallback(() => { ++request.current; }, []);
 
   const refresh = useCallback(async () => {
+    const version = ++request.current;
     if (!profile) {
       setLoading(false);
       setPoolStatus(null);
       setNumberBoard([]);
       setOwnClaim(null);
       setOwnSchedule([]);
+      setOwnClaims([]);
+      selected.current = null;
       return;
     }
 
     setLoading(true);
     setError("");
     try {
-      const [status, exists, board, claim] = await Promise.all([
+      const [status, exists, board, claims] = await Promise.all([
         fetchPoolStatus(),
         fetchCommissionerExists(),
         fetchNumberBoard(),
-        fetchMyClaim(),
+        fetchMyClaims(),
       ]);
+      const claim = claims.find((entry) => selected.current?.uid === profile.id
+        && entry.entry_id === selected.current.entryId) ?? claims[0] ?? null;
+      const schedule = claim ? await fetchMySchedule(claim.schedule_number) : [];
+      if (version !== request.current) return;
       setPoolStatus(status);
       setCommissionerExists(exists);
       setNumberBoard(board);
       setOwnClaim(claim);
-      setOwnSchedule(claim ? await fetchMySchedule(claim.schedule_number) : []);
+      setOwnClaims(claims);
+      setOwnSchedule(schedule);
     } catch (caught) {
+      if (version !== request.current) return;
+      setOwnClaim(null);
+      setOwnClaims([]);
+      setOwnSchedule([]);
       setError(caught instanceof Error ? caught.message : "Cloud pool data could not be loaded.");
     } finally {
-      setLoading(false);
+      if (version === request.current) setLoading(false);
     }
   }, [profile]);
 
@@ -83,6 +99,7 @@ export function useCloudEnrollment(profile: CloudProfile | null): CloudEnrollmen
     );
 
     return () => {
+      invalidateRequests();
       window.clearInterval(timerId);
       window.removeEventListener(
         "focus",
@@ -97,7 +114,7 @@ export function useCloudEnrollment(profile: CloudProfile | null): CloudEnrollmen
         refreshWhenVisible,
       );
     };
-  }, [profile, refresh]);
+  }, [profile, refresh, invalidateRequests]);
 
   const runAndRefresh = async (action: () => Promise<void>) => {
     setError("");
@@ -118,6 +135,14 @@ export function useCloudEnrollment(profile: CloudProfile | null): CloudEnrollmen
     commissionerExists,
     numberBoard,
     ownClaim,
+    ownClaims,
+    selectEntry: (entryId) => {
+      if (!profile || !ownClaims.some((entry) => entry.entry_id === entryId)) return;
+      selected.current = { uid: profile.id, entryId };
+      setOwnClaim(null);
+      setOwnSchedule([]);
+      void refresh();
+    },
     ownSchedule,
     claimedCount: useMemo(() => numberBoard.filter((slot) => slot.claimed).length, [numberBoard]),
     refresh,

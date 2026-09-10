@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --import tsx --test tests/transfer.test.ts",
+    "test:ui": "vitest run tests/entry-switching.test.tsx",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-33pool-multi --config firebase.test.json \"node --test tests/ownership.rules.test.mjs && vitest run tests/entry-transfer.integration.test.ts\""
   },
   "dependencies": {
     "firebase": "^12.16.0",
@@ -16,6 +19,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
@@ -23,9 +28,13 @@
     "eslint": "^10.6.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
+    "firebase-tools": "^15.30.0",
     "globals": "^17.7.0",
+    "jsdom": "^30.0.1",
+    "tsx": "^4.23.13",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.62.0",
-    "vite": "^8.1.1"
+    "vite": "^8.1.1",
+    "vitest": "^5.0.0"
   }
 }

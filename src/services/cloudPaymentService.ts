@@ -9,6 +9,8 @@ import {
 } from "firebase/firestore";
 import { requireFirebaseAuth, requireFirestore } from "../lib/firebase";
 import { getCloudRoleForUid } from "./cloudRoleService";
+import { fetchMyClaims } from "./cloudPoolService";
+import { entryOwner } from "./entryOwnership";
 import type {
   CloudPaymentAccount,
   CloudPaymentEntryInput,
@@ -64,6 +66,7 @@ function buildAccount(
   scheduleNumber: number | null,
   data: StoredPaymentSummary | undefined,
   currentWeek: number,
+  ownerUid: string = uid,
 ): CloudPaymentAccount {
   const normalizedWeek = normalizeCurrentWeek(currentWeek);
   const amountPaidCents = Math.max(0, asNumber(data?.amountPaidCents));
@@ -82,6 +85,7 @@ function buildAccount(
 
   return {
     uid,
+    owner_uid: ownerUid,
     player_name: playerName,
     schedule_number: scheduleNumber,
     amount_paid_cents: amountPaidCents,
@@ -144,32 +148,23 @@ function mapTransaction(
 
 export async function fetchMyPaymentAccount(
   currentWeek: number,
-): Promise<CloudPaymentAccount> {
+  entryId?: string,
+): Promise<CloudPaymentAccount | null> {
   const db = requireFirestore();
-  const user = requireCurrentUser();
-
-  const [profileSnapshot, claimSnapshot, paymentSnapshot] =
-    await Promise.all([
-      getDoc(doc(db, "users", user.uid)),
-      getDoc(doc(db, "userClaims", user.uid)),
-      getDoc(doc(db, "payments", user.uid)),
-    ]);
-
-  const playerName = profileSnapshot.exists()
-    ? asString(profileSnapshot.data().displayName, "Player")
-    : user.email?.split("@")[0] ?? "Player";
-  const scheduleNumber = claimSnapshot.exists()
-    ? Number(claimSnapshot.data().lineId)
-    : null;
+  const claims = await fetchMyClaims();
+  const claim = entryId ? claims.find((entry) => entry.entry_id === entryId) : claims[0];
+  if (!claim) return null;
+  const paymentSnapshot = await getDoc(doc(db, "payments", claim.entry_id));
 
   return buildAccount(
-    user.uid,
-    playerName,
-    Number.isInteger(scheduleNumber) ? scheduleNumber : null,
+    claim.entry_id,
+    claim.player_name,
+    claim.schedule_number,
     paymentSnapshot.exists()
       ? (paymentSnapshot.data() as StoredPaymentSummary)
       : undefined,
     currentWeek,
+    requireCurrentUser().uid,
   );
 }
 
@@ -232,6 +227,7 @@ export async function fetchCommissionerPaymentAccounts(
         Number.isInteger(scheduleNumber) ? scheduleNumber : null,
         paymentsByUid.get(uid),
         currentWeek,
+        entryOwner(data),
       );
     })
     .sort(
@@ -270,7 +266,7 @@ export async function recordCloudPaymentTransaction(
   const commissioner = requireCurrentUser();
   const now = new Date().toISOString();
   const paymentRef = doc(db, "payments", input.uid);
-  const claimRef = doc(db, "userClaims", input.uid);
+  const claimRef = doc(db, "claims", String(input.schedule_number));
   const transactionRef = doc(collection(db, "paymentTransactions"));
   const auditRef = doc(collection(db, "audit"));
   const commissionerProfileRef = doc(db, "users", commissioner.uid);
@@ -294,7 +290,7 @@ export async function recordCloudPaymentTransaction(
       claimSnapshot.data().lineId,
     );
 
-    if (claimedScheduleNumber !== input.schedule_number) {
+    if (claimedScheduleNumber !== input.schedule_number || claimSnapshot.data().uid !== input.uid) {
       throw new Error("The player's schedule claim changed. Refresh the ledger.");
     }
 

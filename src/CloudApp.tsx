@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { OfficialLogo } from "./components/OfficialLogo";
 import { GlobalActionFeedback } from "./components/GlobalActionFeedback";
+import { CloudEntryTransferPanel } from "./features/commissioner/CloudEntryTransferPanel";
 import { rules } from "./data/demoData";
 import { CloudAuthGate } from "./features/auth/CloudAuthGate";
 import { useCloudAuth } from "./features/auth/useCloudAuth";
@@ -97,6 +98,7 @@ export default function CloudApp() {
     auth.profile,
     currentWeek,
     canOpenCommissioner,
+    cloud.ownClaim?.entry_id,
   );
   const scoring = useCloudScoring(
     auth.profile,
@@ -286,10 +288,24 @@ export default function CloudApp() {
           </header>
 
           <main className="app-content">
+            {cloud.ownClaims.length > 1 && (
+              <section className="section-card">
+                <label htmlFor="entry-selector">Your entry</label>
+                <select id="entry-selector" disabled={cloud.loading}
+                  value={cloud.ownClaim?.entry_id ?? ""}
+                  onChange={(event) => cloud.selectEntry(event.target.value)}>
+                  {!cloud.ownClaim && <option value="">Loading entry…</option>}
+                  {cloud.ownClaims.map((entry) => <option key={entry.entry_id} value={entry.entry_id}>
+                    {entry.player_name} · Line #{entry.schedule_number}
+                  </option>)}
+                </select>
+              </section>
+            )}
+            {cloud.error && <section role="alert" className="generator-error">{cloud.error}</section>}
             {screen === "home" && (
               <CloudHome
                 cloud={cloud}
-                name={auth.profile?.display_name ?? "Player"}
+                name={cloud.ownClaim?.player_name ?? auth.profile?.display_name ?? "Player"}
                 onNavigate={setScreen}
                 payments={payments}
                 scoring={scoring}
@@ -378,6 +394,8 @@ export default function CloudApp() {
                     auth={auth}
                     cloud={cloud}
                   />
+                  {(isPrimaryEmail || auth.profile?.role === "primary_commissioner") &&
+                    <CloudEntryTransferPanel onComplete={cloud.refresh} />}
                   {auth.profile && (
                     <CloudPullResetPanel
                       claimedCount={cloud.claimedCount}

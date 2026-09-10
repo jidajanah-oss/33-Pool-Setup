@@ -82,7 +82,7 @@ export function CloudNumberBoard({
       {cloud.ownClaim && (
         <section className="claim-success-card">
           <div className="claim-success-number">#{cloud.ownClaim.schedule_number}</div>
-          <div><small>Confirmed player</small><strong>{profile.display_name}</strong><p>This cloud claim is attached to your authenticated account.</p></div>
+          <div><small>Confirmed player</small><strong>{cloud.ownClaim.player_name}</strong><p>This cloud claim is attached to your authenticated account.</p></div>
         </section>
       )}
       {message && <section className="generator-message">{message}</section>}
@@ -99,7 +99,7 @@ export function CloudMySchedule({ cloud, profile }: { cloud: CloudEnrollmentStat
   return (
     <div className="screen-stack">
       <section className="line-summary-card">
-        <div><p>Player</p><strong>{profile.display_name}</strong></div>
+        <div><p>Player</p><strong>{cloud.ownClaim.player_name ?? profile.display_name}</strong></div>
         <div><p>Line</p><strong>#{cloud.ownClaim.schedule_number}</strong></div>
         <div><p>Season</p><strong>17 + 1</strong></div>
       </section>

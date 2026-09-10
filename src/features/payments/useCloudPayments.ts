@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchCommissionerPaymentAccounts,
   fetchMyPaymentAccount,
@@ -15,9 +15,12 @@ export function useCloudPayments(
   profile: CloudProfile | null,
   currentWeek: number,
   commissionerMode: boolean,
+  entryId?: string,
 ): CloudPaymentState {
   const [loading, setLoading] = useState(Boolean(profile));
   const [error, setError] = useState("");
+  const request = useRef(0);
+  const invalidateRequests = useCallback(() => { ++request.current; }, []);
   const [myAccount, setMyAccount] =
     useState<CloudPaymentState["myAccount"]>(null);
   const [myTransactions, setMyTransactions] = useState<
@@ -28,6 +31,9 @@ export function useCloudPayments(
   >([]);
 
   const refresh = useCallback(async () => {
+    const version = ++request.current;
+    setMyAccount(null);
+    setMyTransactions([]);
     if (!profile) {
       setLoading(false);
       setError("");
@@ -41,31 +47,34 @@ export function useCloudPayments(
     setError("");
 
     try {
-      const account = await fetchMyPaymentAccount(currentWeek);
+      const account = entryId ? await fetchMyPaymentAccount(currentWeek, entryId) : null;
       const [transactions, accounts] = await Promise.all([
-        fetchPaymentTransactionsForUid(account.uid),
+        account ? fetchPaymentTransactionsForUid(account.uid) : Promise.resolve([]),
         commissionerMode
           ? fetchCommissionerPaymentAccounts(currentWeek)
           : Promise.resolve([]),
       ]);
 
+      if (version !== request.current) return;
       setMyAccount(account);
       setMyTransactions(transactions);
       setCommissionerAccounts(accounts);
     } catch (caught) {
+      if (version !== request.current) return;
       setError(
         caught instanceof Error
           ? caught.message
           : "The Firebase payment ledger could not be loaded.",
       );
     } finally {
-      setLoading(false);
+      if (version === request.current) setLoading(false);
     }
-  }, [commissionerMode, currentWeek, profile]);
+  }, [commissionerMode, currentWeek, profile, entryId]);
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    return invalidateRequests;
+  }, [refresh, invalidateRequests]);
 
   const recordPayment = async (
     input: CloudPaymentEntryInput,

@@ -10,6 +10,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { requireFirebaseAuth, requireFirestore } from "../lib/firebase";
+import { entryOwner } from "./entryOwnership";
 import {
   getCloudRoleForUid,
   requireCloudCommissioner,
@@ -197,7 +198,7 @@ export async function fetchNumberBoard(): Promise<CloudNumberSlot[]> {
 
     if (Number.isInteger(lineNumber) && lineNumber >= 1 && lineNumber <= 32) {
       claimsByNumber.set(lineNumber, {
-        uid: typeof data.uid === "string" ? data.uid : "",
+        uid: entryOwner(data),
         playerName:
           typeof data.playerName === "string" ? data.playerName : "Player",
       });
@@ -218,25 +219,24 @@ export async function fetchNumberBoard(): Promise<CloudNumberSlot[]> {
 }
 
 export async function fetchMyClaim(): Promise<CloudClaim | null> {
+  return (await fetchMyClaims())[0] ?? null;
+}
+
+export async function fetchMyClaims(): Promise<CloudClaim[]> {
   const db = requireFirestore();
   const uid = requireUserId();
-  const snapshot = await getDoc(doc(db, "userClaims", uid));
-
-  if (!snapshot.exists()) {
-    return null;
-  }
-
-  const data = snapshot.data();
-  const scheduleNumber = Number(data.lineId);
-
-  if (!Number.isInteger(scheduleNumber)) {
-    throw new Error("The Firebase schedule claim is invalid.");
-  }
-
-  return {
-    schedule_number: scheduleNumber,
-    claimed_at: asIsoString(data.claimedAt),
-  };
+  const snapshots = await getDocs(collection(db, "claims"));
+  return snapshots.docs.filter((snapshot) => entryOwner(snapshot.data()) === uid)
+    .map((snapshot) => {
+      const data = snapshot.data();
+      const number = Number(snapshot.id);
+      if (!Number.isInteger(number) || number < 1 || number > 32 || !data.uid) {
+        throw new Error("The Firebase schedule claim is invalid.");
+      }
+      return { entry_id: String(data.uid), player_name: String(data.playerName),
+        schedule_number: number, claimed_at: asIsoString(data.claimedAt) };
+    }).sort((a, b) => Number(b.entry_id === uid) - Number(a.entry_id === uid)
+      || a.schedule_number - b.schedule_number);
 }
 
 export async function fetchMySchedule(
@@ -267,10 +267,9 @@ export async function fetchWeeklyBoard(
   const role = await getCurrentRole();
   const isCommissioner = role !== "player";
 
-  const [claimSnapshots, ownClaimSnapshot, publicWeekSnapshot] =
+  const [claimSnapshots, publicWeekSnapshot] =
     await Promise.all([
       getDocs(collection(db, "claims")),
-      getDoc(doc(db, "userClaims", uid)),
       getDoc(doc(db, "weeklyPublic", String(week))),
     ]);
 
@@ -285,16 +284,14 @@ export async function fetchWeeklyBoard(
 
     if (Number.isInteger(lineNumber)) {
       claims.set(lineNumber, {
-        uid: typeof data.uid === "string" ? data.uid : "",
+        uid: entryOwner(data),
         playerName:
           typeof data.playerName === "string" ? data.playerName : "Player",
       });
     }
   });
 
-  const ownLineId = ownClaimSnapshot.exists()
-    ? Number(ownClaimSnapshot.data().lineId)
-    : null;
+  const ownLineIds = [...claims].filter(([, claim]) => claim.uid === uid).map(([id]) => id);
 
   const assignmentsByLine = new Map<number, GeneratedScheduleAssignment>();
 
@@ -313,7 +310,7 @@ export async function fetchWeeklyBoard(
       }
     });
   } else {
-    if (ownLineId !== null && Number.isInteger(ownLineId)) {
+    for (const ownLineId of ownLineIds) {
       const ownSchedule = await getDoc(
         doc(db, "privateSchedules", String(ownLineId)),
       );
@@ -361,7 +358,7 @@ export async function fetchWeeklyBoard(
       team_code: assignment?.teamCode ?? null,
       team_name: assignment?.teamName ?? null,
       is_bye: assignment?.isBye ?? null,
-      mine: scheduleNumber === ownLineId,
+      mine: ownLineIds.includes(scheduleNumber),
     };
   });
 }
@@ -724,7 +721,7 @@ export async function launchCloud2026Season(
 
   if (claimUids.size !== 32) {
     throw new Error(
-      "Every schedule number must belong to a different signed-in player.",
+      "Every schedule number must have its own distinct ledger identity.",
     );
   }
 
